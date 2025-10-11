@@ -1,0 +1,35 @@
+name = "xkcd"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "xkcd"
+database_id = "6a0587db-9ac5-44e5-b743-4bb8d89594bf"
+
+# Routes
+[[routes]]
+pattern = "api2.jienan.xyz/xkcd/*"
+zone_name = "jienan.xyz"
+
+# Custom domains
+[[routes]]
+pattern = "xkcd2.jienan.xyz"
+custom_domain = true
+
+# Cron Triggers for crawlers
+[triggers]
+crons = [
+  "0 * * * *",   # XKCD hourly
+  "0 0 * * *"    # What If daily at midnight UTC
+]
+
+# [env.development]
+# name = "xkcd-dev"
+
+# [env.production]
+# name = "xkcd-prod"
+
+[observability.logs]
+enabled = true

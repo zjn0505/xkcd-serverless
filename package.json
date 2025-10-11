@@ -1,0 +1,20 @@
+{
+  "name": "xkcd",
+  "version": "1.0.0",
+  "description": "XKCD Serverless API on Cloudflare Workers",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build": "tsc",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20231218.0",
+    "typescript": "^5.3.0",
+    "wrangler": "^4.42.0"
+  },
+  "dependencies": {
+    "itty-router": "^4.0.23"
+  }
+}

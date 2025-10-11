@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XKCD 数据概览</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            border-left: 4px solid #667eea;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .list-item {
+            background: #f8f9fa;
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .list-item h3 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .list-item p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .localized-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .lang-card {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid #bbdefb;
+        }
+        
+        .lang-code {
+            font-weight: bold;
+            color: #1976d2;
+            margin-bottom: 5px;
+        }
+        
+        .lang-count {
+            font-size: 1.2rem;
+            color: #333;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+        
+        .refresh-btn:hover {
+            background: #5a6fd8;
+        }
+        
+        .last-updated {
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>XKCD 数据概览</h1>
+            <p>实时数据统计和监控面板</p>
+        </div>
+        
+        <div class="content">
+            <button class="refresh-btn" onclick="loadData()">🔄 刷新数据</button>
+            
+            <div id="loading" class="loading">
+                <p>正在加载数据...</p>
+            </div>
+            
+            <div id="error" class="error" style="display: none;">
+                <p>加载数据时出错，请稍后重试。</p>
+            </div>
+            
+            <div id="content" style="display: none;">
+                <!-- 统计卡片 -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalComics">0</div>
+                        <div class="stat-label">XKCD 漫画总数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalWhatIf">0</div>
+                        <div class="stat-label">What If 文章总数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalComicLikes">0</div>
+                        <div class="stat-label">漫画总点赞数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalWhatIfLikes">0</div>
+                        <div class="stat-label">文章总点赞数</div>
+                    </div>
+                </div>
+                
+                <!-- 最新内容 -->
+                <div class="section">
+                    <h2>📚 最新内容</h2>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <h3>最新漫画</h3>
+                            <div id="latestComics"></div>
+                        </div>
+                        <div>
+                            <h3>最新 What If 文章</h3>
+                            <div id="latestWhatIf"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 热门内容 -->
+                <div class="section">
+                    <h2>🔥 热门内容</h2>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <h3>热门漫画</h3>
+                            <div id="topComics"></div>
+                        </div>
+                        <div>
+                            <h3>热门 What If 文章</h3>
+                            <div id="topWhatIf"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 多语言统计 -->
+                <div class="section">
+                    <h2>🌍 多语言翻译统计</h2>
+                    <div class="localized-grid" id="localizedStats"></div>
+                </div>
+                
+                <div class="last-updated">
+                    <p>最后更新: <span id="lastUpdated"></span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadData() {
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const content = document.getElementById('content');
+            
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            content.style.display = 'none';
+            
+            try {
+                const response = await fetch('/overview');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                displayData(data);
+                
+                loading.style.display = 'none';
+                content.style.display = 'block';
+            } catch (err) {
+                console.error('Error loading data:', err);
+                loading.style.display = 'none';
+                error.style.display = 'block';
+            }
+        }
+        
+        function displayData(data) {
+            // 更新统计数字
+            document.getElementById('totalComics').textContent = data.summary.totalComics.toLocaleString();
+            document.getElementById('totalWhatIf').textContent = data.summary.totalWhatIf.toLocaleString();
+            document.getElementById('totalComicLikes').textContent = data.summary.totalComicLikes.toLocaleString();
+            document.getElementById('totalWhatIfLikes').textContent = data.summary.totalWhatIfLikes.toLocaleString();
+            
+            // 最新漫画
+            const latestComics = document.getElementById('latestComics');
+            latestComics.innerHTML = data.latest.comics.map(comic => `
+                <div class="list-item">
+                    <h3>#${comic.id} - ${comic.title}</h3>
+                    <p>${comic.year}-${comic.month.toString().padStart(2, '0')}-${comic.day.toString().padStart(2, '0')}</p>
+                </div>
+            `).join('');
+            
+            // 最新 What If 文章
+            const latestWhatIf = document.getElementById('latestWhatIf');
+            latestWhatIf.innerHTML = data.latest.whatIf.map(article => `
+                <div class="list-item">
+                    <h3>#${article.id} - ${article.title}</h3>
+                    <p>${article.date}</p>
+                </div>
+            `).join('');
+            
+            // 热门漫画
+            const topComics = document.getElementById('topComics');
+            topComics.innerHTML = data.topLiked.comics.map(comic => `
+                <div class="list-item">
+                    <h3>#${comic.comic_id} - ${comic.title}</h3>
+                    <p>👍 ${comic.count} 点赞</p>
+                </div>
+            `).join('');
+            
+            // 热门 What If 文章
+            const topWhatIf = document.getElementById('topWhatIf');
+            topWhatIf.innerHTML = data.topLiked.whatIf.map(article => `
+                <div class="list-item">
+                    <h3>#${article.comic_id} - ${article.title}</h3>
+                    <p>👍 ${article.count} 点赞</p>
+                </div>
+            `).join('');
+            
+            // 多语言统计
+            const localizedStats = document.getElementById('localizedStats');
+            const languages = {
+                'zh-cn': '简体中文',
+                'zh-tw': '繁体中文',
+                'es': '西班牙语',
+                'fr': '法语',
+                'de': '德语',
+                'ja': '日语'
+            };
+            
+            localizedStats.innerHTML = Object.entries(data.localized).map(([code, count]) => `
+                <div class="lang-card">
+                    <div class="lang-code">${languages[code] || code}</div>
+                    <div class="lang-count">${count}</div>
+                </div>
+            `).join('');
+            
+            // 最后更新时间
+            document.getElementById('lastUpdated').textContent = new Date(data.lastUpdated).toLocaleString('zh-CN');
+        }
+        
+        // 页面加载时自动获取数据
+        loadData();
+        
+        // 每30秒自动刷新
+        setInterval(loadData, 30000);
+    </script>
+</body>
+</html>
