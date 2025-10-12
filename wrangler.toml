@@ -1,12 +1,18 @@
 name = "xkcd"
 main = "src/index.ts"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-04-03"
+compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
 [[d1_databases]]
 binding = "DB"
 database_name = "xkcd"
 database_id = "6a0587db-9ac5-44e5-b743-4bb8d89594bf"
+
+[[kv_namespaces]]
+binding = "CRAWLER_STATE"
+id = "a84f99f77872493ea14bce9d7068fafa"
+preview_id = "d878eae42066419892be63ff6a6c37c1"
 
 # Routes
 [[routes]]
@@ -21,8 +27,9 @@ custom_domain = true
 # Cron Triggers for crawlers
 [triggers]
 crons = [
-  "0 * * * *",   # XKCD hourly
-  "0 0 * * *"    # What If daily at midnight UTC
+  "0 * * * *",      # XKCD hourly (every hour at :00)
+  "15 0 * * *",     # What If daily at 00:15 UTC
+  "*/15 * * * *"    # zh-CN localized every 15 minutes (incremental)
 ]
 
 # [env.development]

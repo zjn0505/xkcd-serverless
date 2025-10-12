@@ -20,6 +20,30 @@ function convertIdToNum(obj: any): any {
 }
 
 export function registerLocalizedRoutes(router: RouterType) {
+  // GET /info.0.json (latest localized comic)
+  router.get('/info.0.json', async (request, env, ctx, { db }) => {
+    try {
+      const url = new URL(request.url);
+      const locale = resolveLocale(url.searchParams.get('locale'));
+      const localized = await db.getLatestLocalizedComic(locale);
+      if (localized) {
+        // Transform to match old API format: {_id, num, title, img, alt}
+        const response = {
+          _id: String(localized.id),
+          num: String(localized.id),
+          title: localized.title,
+          img: localized.img,
+          alt: localized.alt || ''
+        };
+        return createJsonResponse(response);
+      }
+      return createErrorResponse('No localized comics found', 404);
+    } catch (error) {
+      console.error('Error in /info.0.json:', error);
+      return createErrorResponse('Failed to fetch latest localized comic');
+    }
+  });
+
   // GET /archive
   router.get('/archive', async (request, env, ctx, { db }) => {
     try {
@@ -43,7 +67,17 @@ export function registerLocalizedRoutes(router: RouterType) {
       if (isNaN(comicId)) return createErrorResponse('Invalid comic ID', 400);
       const locale = resolveLocale(url.searchParams.get('locale'));
       const localized = await db.getLocalizedComic(comicId, locale);
-      if (localized) return createJsonResponse(convertIdToNum(localized));
+      if (localized) {
+        // Transform to match old API format: {_id, num, title, img, alt}
+        const response = {
+          _id: String(localized.id),
+          num: String(localized.id),
+          title: localized.title,
+          img: localized.img,
+          alt: localized.alt || ''
+        };
+        return createJsonResponse(response);
+      }
       return createErrorResponse('Localized comic not found', 404);
     } catch (error) {
       console.error('Error in localized /:comicId/info.0.json:', error);

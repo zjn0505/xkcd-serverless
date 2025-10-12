@@ -126,18 +126,22 @@ export default {
       // Initialize database
       const db = new Database(env.DB);
       
-      // Run XKCD only on hourly trigger
+      // Run XKCD crawler hourly
       if (event.cron === '0 * * * *') {
         const xkcdCrawler = new XkcdCrawler(db);
         ctx.waitUntil(xkcdCrawler.crawl());
       }
 
-      // Run What If only on daily trigger
-      if (event.cron === '0 0 * * *') {
+      // Run What If crawler daily at 00:15 UTC
+      if (event.cron === '15 0 * * *') {
         const whatIfCrawler = new WhatIfCrawler(db);
         ctx.waitUntil(whatIfCrawler.crawl());
-        // Also run zh-CN localized daily (slow moving)
-        const zhcnCrawler = new LocalizedZhCnCrawler(db);
+      }
+
+      // Run zh-CN localized crawler every 15 minutes for incremental processing
+      if (event.cron === '*/15 * * * *') {
+        // Use traditional crawler with KV state management
+        const zhcnCrawler = new LocalizedZhCnCrawler(db, env.CRAWLER_STATE);
         ctx.waitUntil(zhcnCrawler.crawl());
       }
       

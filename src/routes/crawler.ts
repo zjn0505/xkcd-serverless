@@ -77,7 +77,7 @@ export function registerCrawlerRoutes(router: RouterType) {
 
   router.get('/crawler/localized/zh-cn/status', async (request, env, ctx, { db }) => {
     try {
-      const crawler = new LocalizedZhCnCrawler(db);
+      const crawler = new LocalizedZhCnCrawler(db, env.CRAWLER_STATE);
       const status = await crawler.getStatus();
       return createJsonResponse(status);
     } catch (error) {
@@ -88,9 +88,13 @@ export function registerCrawlerRoutes(router: RouterType) {
 
   router.post('/crawler/localized/zh-cn/start', async (request, env, ctx, { db }) => {
     try {
-      const crawler = new LocalizedZhCnCrawler(db);
+      // Use traditional crawler with KV state management for incremental processing
+      const crawler = new LocalizedZhCnCrawler(db, env.CRAWLER_STATE);
       ctx.waitUntil(crawler.crawl());
-      return createJsonResponse({ message: 'Localized zh-CN crawler started', timestamp: new Date().toISOString() });
+      return createJsonResponse({ 
+        message: 'Localized zh-CN crawler started (incremental mode with KV state)', 
+        timestamp: new Date().toISOString() 
+      });
     } catch (error) {
       console.error('Error in /crawler/localized/zh-cn/start:', error);
       return createErrorResponse('Failed to start localized crawler');
@@ -101,7 +105,7 @@ export function registerCrawlerRoutes(router: RouterType) {
     try {
       const url = new URL(request.url);
       const limit = parseInt(url.searchParams.get('limit') || '50');
-      const crawler = new LocalizedZhCnCrawler(db);
+      const crawler = new LocalizedZhCnCrawler(db, env.CRAWLER_STATE);
       const logs = await crawler.getLogs(limit);
       return createJsonResponse({ logs, count: logs.length, limit });
     } catch (error) {

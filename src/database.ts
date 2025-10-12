@@ -118,6 +118,14 @@ export class Database {
     return result as LocalizedComic | null;
   }
 
+  async getLatestLocalizedComic(language: SupportedLanguage): Promise<LocalizedComic | null> {
+    const tableName = this.getLocalizedTableName(language);
+    const result = await this.db
+      .prepare(`SELECT * FROM ${tableName} ORDER BY id DESC LIMIT 1`)
+      .first();
+    return result as LocalizedComic | null;
+  }
+
   async getLocalizedComics(start: number = 0, size: number = 100, language: SupportedLanguage): Promise<LocalizedComic[]> {
     const tableName = this.getLocalizedTableName(language);
     const result = await this.db
