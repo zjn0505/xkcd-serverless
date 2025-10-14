@@ -1,11 +1,8 @@
 import { Router } from 'itty-router';
 import { Database } from './database';
-import { DataSync } from './sync';
-import { createJsonResponse, createErrorResponse } from './http/response';
-import { resolveLocale } from './i18n/locale';
+import { createErrorResponse } from './http/response';
 import { XkcdCrawler } from './crawlers/xkcd';
 import { WhatIfCrawler } from './crawlers/whatif';
-import { LocalizedZhCnCrawler } from './crawlers/localized_zh_cn';
 import { registerHealthRoutes } from './routes/health';
 import { registerXkcdRoutes } from './routes/xkcd';
 import { registerWhatIfRoutes } from './routes/whatif';
@@ -13,6 +10,9 @@ import { registerLocalizedRoutes } from './routes/localized';
 import { registerAdminRoutes } from './routes/admin';
 import { registerCrawlerRoutes } from './routes/crawler';
 import overviewHtml from '../public/overview.html';
+
+// Export Workflows
+export { ZhCnCrawlerWorkflow } from './workflows/zh_cn_crawler';
 
 // Create API router for api2.jienan.xyz/xkcd
 const apiRouter = Router({ base: '/xkcd' });
@@ -138,11 +138,14 @@ export default {
         ctx.waitUntil(whatIfCrawler.crawl());
       }
 
-      // Run zh-CN localized crawler every 15 minutes for incremental processing
+      // Run zh-CN localized crawler every 15 minutes using Workflow
       if (event.cron === '*/15 * * * *') {
-        // Use traditional crawler with KV state management
-        const zhcnCrawler = new LocalizedZhCnCrawler(db, env.CRAWLER_STATE);
-        ctx.waitUntil(zhcnCrawler.crawl());
+        if (env.ZH_CN_CRAWLER) {
+          const instance = await env.ZH_CN_CRAWLER.create();
+          console.log('zh-CN Workflow started:', instance.id);
+        } else {
+          console.error('ZH_CN_CRAWLER Workflow binding not found');
+        }
       }
       
       console.log('Crawlers started via cron trigger');

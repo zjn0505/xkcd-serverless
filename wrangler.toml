@@ -14,6 +14,12 @@ binding = "CRAWLER_STATE"
 id = "a84f99f77872493ea14bce9d7068fafa"
 preview_id = "d878eae42066419892be63ff6a6c37c1"
 
+# Workflows
+[[workflows]]
+binding = "ZH_CN_CRAWLER"
+name = "xkcd-zh-cn-crawler"
+class_name = "ZhCnCrawlerWorkflow"
+
 # Routes
 [[routes]]
 pattern = "api2.jienan.xyz/xkcd/*"

@@ -1,6 +1,7 @@
 import { RouterType } from 'itty-router';
 import { createJsonResponse, createErrorResponse } from '../http/response';
 import { resolveLocale } from '../i18n/locale';
+import { withCache } from '../http/cache';
 
 // Helper function to convert id to num in response objects
 function convertIdToNum(obj: any): any {
@@ -45,7 +46,7 @@ export function registerXkcdRoutes(router: RouterType) {
   });
 
   // GET /:comicId/info.0.json (official; supports ?locale fallback)
-  router.get('/:comicId/info.0.json', async (request, env, ctx, { db }) => {
+  router.get('/:comicId/info.0.json', withCache(async (request, env, ctx, { db }) => {
     try {
       const url = new URL(request.url);
       const comicId = parseInt(url.pathname.split('/')[1]);
@@ -66,7 +67,11 @@ export function registerXkcdRoutes(router: RouterType) {
       console.error('Error in /:comicId/info.0.json:', error);
       return createErrorResponse('Failed to fetch comic info');
     }
-  });
+  }, {
+    ttl: 86400,        // 24 hours edge cache
+    browserTtl: 3600,  // 1 hour browser cache
+    notFoundTtl: 600   // 10 minutes for 404
+  }));
 
   // POST /xkcd-thumb-up
   router.post('/xkcd-thumb-up', async (request, env, ctx, { db }) => {

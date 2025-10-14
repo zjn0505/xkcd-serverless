@@ -233,7 +233,7 @@ export class WhatIfCrawler extends BaseCrawler {
       // Get task statistics
       const stats = await this.db.db.prepare(`
         SELECT 
-          COUNT(*) as total_tasks,
+          COUNT(id) as total_tasks,
           SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
           SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_tasks
         FROM crawl_tasks 

@@ -1,6 +1,7 @@
 import { Router, RouterType } from 'itty-router';
 import { createJsonResponse, createErrorResponse } from '../http/response';
 import { resolveLocale } from '../i18n/locale';
+import { withCache } from '../http/cache';
 
 // Helper function to convert id to num in response objects
 function convertIdToNum(obj: any): any {
@@ -20,32 +21,8 @@ function convertIdToNum(obj: any): any {
 }
 
 export function registerLocalizedRoutes(router: RouterType) {
-  // GET /info.0.json (latest localized comic)
-  router.get('/info.0.json', async (request, env, ctx, { db }) => {
-    try {
-      const url = new URL(request.url);
-      const locale = resolveLocale(url.searchParams.get('locale'));
-      const localized = await db.getLatestLocalizedComic(locale);
-      if (localized) {
-        // Transform to match old API format: {_id, num, title, img, alt}
-        const response = {
-          _id: String(localized.id),
-          num: String(localized.id),
-          title: localized.title,
-          img: localized.img,
-          alt: localized.alt || ''
-        };
-        return createJsonResponse(response);
-      }
-      return createErrorResponse('No localized comics found', 404);
-    } catch (error) {
-      console.error('Error in /info.0.json:', error);
-      return createErrorResponse('Failed to fetch latest localized comic');
-    }
-  });
-
   // GET /archive
-  router.get('/archive', async (request, env, ctx, { db }) => {
+  router.get('/archive', withCache(async (request, env, ctx, { db }) => {
     try {
       const url = new URL(request.url);
       const start = parseInt(url.searchParams.get('start') || '0');
@@ -57,10 +34,13 @@ export function registerLocalizedRoutes(router: RouterType) {
       console.error('Error in /archive:', error);
       return createErrorResponse('Failed to fetch localized archive');
     }
-  });
+  }, {
+    ttl: 3600,      // 1 hour edge cache (archive updates frequently)
+    browserTtl: 300 // 5 minutes browser cache
+  }));
 
   // GET /:comicId/info.0.json (localized JSON)
-  router.get('/:comicId/info.0.json', async (request, env, ctx, { db }) => {
+  router.get('/:comicId/info.0.json', withCache(async (request, env, ctx, { db }) => {
     try {
       const url = new URL(request.url);
       const comicId = parseInt(url.pathname.split('/')[1]);
@@ -83,7 +63,11 @@ export function registerLocalizedRoutes(router: RouterType) {
       console.error('Error in localized /:comicId/info.0.json:', error);
       return createErrorResponse('Failed to fetch localized comic');
     }
-  });
+  }, {
+    ttl: 86400,        // 24 hours edge cache (localized comics rarely change)
+    browserTtl: 3600,  // 1 hour browser cache
+    notFoundTtl: 600   // 10 minutes for 404 (comic might be translated soon)
+  }));
 }
 
 

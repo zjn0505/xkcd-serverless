@@ -56,18 +56,18 @@ export function registerAdminRoutes(router: RouterType) {
   // GET /overview
   router.get('/overview', async (request, env, ctx, { db }) => {
     try {
-      const comicsCount = await db.db.prepare('SELECT COUNT(*) as count FROM comics').first();
-      const whatIfCount = await db.db.prepare('SELECT COUNT(*) as count FROM what_if').first();
-      const likeCountsTotal = await db.db.prepare('SELECT COUNT(*) as count FROM like_counts').first();
+      const comicsCount = await db.db.prepare('SELECT COUNT(id) as count FROM comics').first();
+      const whatIfCount = await db.db.prepare('SELECT COUNT(id) as count FROM what_if').first();
+      const likeCountsTotal = await db.db.prepare('SELECT COUNT(id) as count FROM like_counts').first();
 
       const comicLikes = await db.db.prepare(`
-        SELECT COUNT(*) as count, SUM(count) as total 
+        SELECT COUNT(id) as count, SUM(count) as total 
         FROM like_counts 
         WHERE comic_type = 'comic'
       `).first();
 
       const whatIfLikes = await db.db.prepare(`
-        SELECT COUNT(*) as count, SUM(count) as total 
+        SELECT COUNT(id) as count, SUM(count) as total 
         FROM like_counts 
         WHERE comic_type = 'what_if'
       `).first();
@@ -105,12 +105,12 @@ export function registerAdminRoutes(router: RouterType) {
       `).all();
 
       const localizedCounts = await Promise.all([
-        db.db.prepare('SELECT COUNT(*) as count FROM comics_zh_cn').first(),
-        db.db.prepare('SELECT COUNT(*) as count FROM comics_zh_tw').first(),
-        db.db.prepare('SELECT COUNT(*) as count FROM comics_es').first(),
-        db.db.prepare('SELECT COUNT(*) as count FROM comics_fr').first(),
-        db.db.prepare('SELECT COUNT(*) as count FROM comics_de').first(),
-        db.db.prepare('SELECT COUNT(*) as count FROM comics_ja').first()
+        db.db.prepare('SELECT COUNT(id) as count FROM comics_zh_cn').first(),
+        db.db.prepare('SELECT COUNT(id) as count FROM comics_zh_tw').first(),
+        db.db.prepare('SELECT COUNT(id) as count FROM comics_es').first(),
+        db.db.prepare('SELECT COUNT(id) as count FROM comics_fr').first(),
+        db.db.prepare('SELECT COUNT(id) as count FROM comics_de').first(),
+        db.db.prepare('SELECT COUNT(id) as count FROM comics_ja').first()
       ]);
 
       const overview = {

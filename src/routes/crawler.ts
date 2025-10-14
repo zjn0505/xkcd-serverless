@@ -2,7 +2,6 @@ import { Router, RouterType } from 'itty-router';
 import { createJsonResponse, createErrorResponse } from '../http/response';
 import { XkcdCrawler } from '../crawlers/xkcd';
 import { WhatIfCrawler } from '../crawlers/whatif';
-import { LocalizedZhCnCrawler } from '../crawlers/localized_zh_cn';
 
 export function registerCrawlerRoutes(router: RouterType) {
   router.get('/crawler/xkcd/status', async (request, env, ctx, { db }) => {
@@ -75,44 +74,24 @@ export function registerCrawlerRoutes(router: RouterType) {
     }
   });
 
-  router.get('/crawler/localized/zh-cn/status', async (request, env, ctx, { db }) => {
-    try {
-      const crawler = new LocalizedZhCnCrawler(db, env.CRAWLER_STATE);
-      const status = await crawler.getStatus();
-      return createJsonResponse(status);
-    } catch (error) {
-      console.error('Error in /crawler/localized/zh-cn/status:', error);
-      return createErrorResponse('Failed to get localized crawler status');
-    }
-  });
-
   router.post('/crawler/localized/zh-cn/start', async (request, env, ctx, { db }) => {
     try {
-      // Use traditional crawler with KV state management for incremental processing
-      const crawler = new LocalizedZhCnCrawler(db, env.CRAWLER_STATE);
-      ctx.waitUntil(crawler.crawl());
-      return createJsonResponse({ 
-        message: 'Localized zh-CN crawler started (incremental mode with KV state)', 
-        timestamp: new Date().toISOString() 
-      });
+      if (env.ZH_CN_CRAWLER) {
+        const instance = await env.ZH_CN_CRAWLER.create();
+        return createJsonResponse({
+          message: 'Localized zh-CN crawler workflow started',
+          workflowId: instance.id,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        return createErrorResponse('ZH_CN_CRAWLER Workflow binding not found');
+      }
     } catch (error) {
       console.error('Error in /crawler/localized/zh-cn/start:', error);
       return createErrorResponse('Failed to start localized crawler');
     }
   });
 
-  router.get('/crawler/localized/zh-cn/logs', async (request, env, ctx, { db }) => {
-    try {
-      const url = new URL(request.url);
-      const limit = parseInt(url.searchParams.get('limit') || '50');
-      const crawler = new LocalizedZhCnCrawler(db, env.CRAWLER_STATE);
-      const logs = await crawler.getLogs(limit);
-      return createJsonResponse({ logs, count: logs.length, limit });
-    } catch (error) {
-      console.error('Error in /crawler/localized/zh-cn/logs:', error);
-      return createErrorResponse('Failed to get localized crawler logs');
-    }
-  });
 }
 
 

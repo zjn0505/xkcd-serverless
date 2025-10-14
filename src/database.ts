@@ -37,9 +37,9 @@ export class Database {
     const order = reversed ? 'DESC' : 'ASC';
     const operator = reversed ? '<=' : '>=';
     
-    // Get total count
+    // Get total count (use COUNT(id) for better performance with primary key)
     const totalResult = await this.db
-      .prepare('SELECT COUNT(*) as count FROM comics')
+      .prepare('SELECT COUNT(id) as count FROM comics')
       .first();
     const total = (totalResult as any).count || 0;
     
@@ -118,14 +118,6 @@ export class Database {
     return result as LocalizedComic | null;
   }
 
-  async getLatestLocalizedComic(language: SupportedLanguage): Promise<LocalizedComic | null> {
-    const tableName = this.getLocalizedTableName(language);
-    const result = await this.db
-      .prepare(`SELECT * FROM ${tableName} ORDER BY id DESC LIMIT 1`)
-      .first();
-    return result as LocalizedComic | null;
-  }
-
   async getLocalizedComics(start: number = 0, size: number = 100, language: SupportedLanguage): Promise<LocalizedComic[]> {
     const tableName = this.getLocalizedTableName(language);
     const result = await this.db
@@ -161,7 +153,7 @@ export class Database {
     for (const lang of languages) {
       const tableName = this.getLocalizedTableName(lang);
       const result = await this.db
-        .prepare(`SELECT COUNT(*) as count FROM ${tableName} WHERE id = ?`)
+        .prepare(`SELECT COUNT(id) as count FROM ${tableName} WHERE id = ?`)
         .bind(comicId)
         .first();
       
@@ -303,9 +295,9 @@ export class Database {
     const order = reversed ? 'DESC' : 'ASC';
     const operator = reversed ? '<=' : '>=';
     
-    // Get total count
+    // Get total count (use COUNT(id) for better performance with primary key)
     const countResult = await this.db
-      .prepare('SELECT COUNT(*) as count FROM what_if')
+      .prepare('SELECT COUNT(id) as count FROM what_if')
       .first();
     const total = (countResult as any).count || 0;
     

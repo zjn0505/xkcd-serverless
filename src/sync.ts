@@ -196,8 +196,8 @@ export class DataSync {
    * Get sync status
    */
   async getSyncStatus(): Promise<{ comics: number, whatIf: number, lastSync: string }> {
-    const comicsCount = await this.db.db.prepare('SELECT COUNT(*) as count FROM comics').first();
-    const whatIfCount = await this.db.db.prepare('SELECT COUNT(*) as count FROM what_if').first();
+    const comicsCount = await this.db.db.prepare('SELECT COUNT(id) as count FROM comics').first();
+    const whatIfCount = await this.db.db.prepare('SELECT COUNT(id) as count FROM what_if').first();
     
     return {
       comics: (comicsCount as any).count || 0,
