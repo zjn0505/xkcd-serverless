@@ -47,8 +47,11 @@ export function registerWhatIfRoutes(router: RouterType) {
   router.get('/what-if/:id', async (request, env, ctx, { db }) => {
     try {
       const url = new URL(request.url);
-      const id = parseInt(url.pathname.split('/')[2]);
-      if (isNaN(id)) return createErrorResponse('Invalid What If article ID', 400);
+      // Extract ID from /what-if/:id pattern
+      const pathMatch = url.pathname.match(/\/what-if\/(\d+)/);
+      if (!pathMatch) return createErrorResponse('Invalid What If article ID', 400);
+      const id = parseInt(pathMatch[1]);
+      if (isNaN(id) || id <= 0) return createErrorResponse('Invalid What If article ID', 400);
       const whatIf = await db.getWhatIf(id);
       if (!whatIf) return createErrorResponse('What If article not found', 404);
       return createJsonResponse(convertIdToNum(whatIf));

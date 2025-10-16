@@ -38,7 +38,7 @@ export interface LocalizedComic {
 }
 
 // Supported languages
-export type SupportedLanguage = 'zh-cn' | 'zh-tw' | 'es' | 'fr' | 'de' | 'ja';
+export type SupportedLanguage = 'zh-cn' | 'zh-tw' | 'es' | 'fr' | 'de' | 'ru';
 
 export interface LikeCount {
   id: number;

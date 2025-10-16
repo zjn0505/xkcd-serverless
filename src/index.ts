@@ -13,6 +13,9 @@ import overviewHtml from '../public/overview.html';
 
 // Export Workflows
 export { ZhCnCrawlerWorkflow } from './workflows/zh_cn_crawler';
+export { FrCrawlerWorkflow } from './workflows/fr_crawler';
+export { ZhTwCrawlerWorkflow } from './workflows/zh_tw_crawler';
+export { RuCrawlerWorkflow } from './workflows/ru_crawler';
 
 // Create API router for api2.jienan.xyz/xkcd
 const apiRouter = Router({ base: '/xkcd' });
@@ -126,25 +129,42 @@ export default {
       // Initialize database
       const db = new Database(env.DB);
       
-      // Run XKCD crawler hourly
-      if (event.cron === '0 * * * *') {
+      // Minute dispatcher: xkcd every minute; zh-CN every 15 minutes
+      if (event.cron === '*/1 * * * *') {
+        // xkcd main site every minute
         const xkcdCrawler = new XkcdCrawler(db);
         ctx.waitUntil(xkcdCrawler.crawl());
-      }
 
-      // Run What If crawler daily at 00:15 UTC
-      if (event.cron === '15 0 * * *') {
-        const whatIfCrawler = new WhatIfCrawler(db);
-        ctx.waitUntil(whatIfCrawler.crawl());
-      }
-
-      // Run zh-CN localized crawler every 15 minutes using Workflow
-      if (event.cron === '*/15 * * * *') {
-        if (env.ZH_CN_CRAWLER) {
+        // zh-CN every 15 minutes
+        const minute = new Date().getUTCMinutes();
+        if (minute % 15 === 0 && env.ZH_CN_CRAWLER) {
           const instance = await env.ZH_CN_CRAWLER.create();
           console.log('zh-CN Workflow started:', instance.id);
-        } else {
-          console.error('ZH_CN_CRAWLER Workflow binding not found');
+        }
+      }
+
+      // Daily dispatcher: What If + localized dailies (fr, zh-tw)
+      if (event.cron === '15 0 * * *') {
+        // What If daily
+        const whatIfCrawler = new WhatIfCrawler(db);
+        ctx.waitUntil(whatIfCrawler.crawl());
+
+        // fr daily (monthly previously; daily OK, state will skip if no change)
+        if (env.FR_CRAWLER) {
+          const frInstance = await env.FR_CRAWLER.create();
+          console.log('fr Workflow started:', frInstance.id);
+        }
+
+        // zh-TW daily
+        if (env.ZH_TW_CRAWLER) {
+          const twInstance = await env.ZH_TW_CRAWLER.create();
+          console.log('zh-TW Workflow started:', twInstance.id);
+        }
+
+        // ru daily
+        if (env.RU_CRAWLER) {
+          const ruInstance = await env.RU_CRAWLER.create();
+          console.log('ru Workflow started:', ruInstance.id);
         }
       }
       

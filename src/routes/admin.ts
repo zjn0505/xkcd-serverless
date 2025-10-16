@@ -110,7 +110,7 @@ export function registerAdminRoutes(router: RouterType) {
         db.db.prepare('SELECT COUNT(id) as count FROM comics_es').first(),
         db.db.prepare('SELECT COUNT(id) as count FROM comics_fr').first(),
         db.db.prepare('SELECT COUNT(id) as count FROM comics_de').first(),
-        db.db.prepare('SELECT COUNT(id) as count FROM comics_ja').first()
+        db.db.prepare('SELECT COUNT(id) as count FROM comics_ru').first()
       ]);
 
       const overview = {
@@ -135,7 +135,7 @@ export function registerAdminRoutes(router: RouterType) {
           'es': (localizedCounts[2] as any)?.count || 0,
           'fr': (localizedCounts[3] as any)?.count || 0,
           'de': (localizedCounts[4] as any)?.count || 0,
-          'ja': (localizedCounts[5] as any)?.count || 0
+          'ru': (localizedCounts[5] as any)?.count || 0
         },
         lastUpdated: new Date().toISOString()
       };
@@ -147,5 +147,3 @@ export function registerAdminRoutes(router: RouterType) {
     }
   });
 }
-
-

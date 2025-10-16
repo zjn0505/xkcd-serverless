@@ -43,15 +43,18 @@ export function registerLocalizedRoutes(router: RouterType) {
   router.get('/:comicId/info.0.json', withCache(async (request, env, ctx, { db }) => {
     try {
       const url = new URL(request.url);
-      const comicId = parseInt(url.pathname.split('/')[1]);
-      if (isNaN(comicId)) return createErrorResponse('Invalid comic ID', 400);
+      // Extract comicId from /:comicId/info.0.json pattern
+      const pathMatch = url.pathname.match(/^\/(\d+)\/info\.0\.json$/);
+      if (!pathMatch) return createErrorResponse('Invalid comic ID', 400);
+      const comicId = parseInt(pathMatch[1]);
+      if (isNaN(comicId) || comicId <= 0) return createErrorResponse('Invalid comic ID', 400);
       const locale = resolveLocale(url.searchParams.get('locale'));
       const localized = await db.getLocalizedComic(comicId, locale);
       if (localized) {
-        // Transform to match old API format: {_id, num, title, img, alt}
+        // Transform to match XKCD API format: {_id, num, title, img, alt}
         const response = {
-          _id: String(localized.id),
-          num: String(localized.id),
+          _id: localized.id,
+          num: localized.id,
           title: localized.title,
           img: localized.img,
           alt: localized.alt || ''

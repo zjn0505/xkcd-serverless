@@ -88,8 +88,9 @@ CREATE TABLE IF NOT EXISTS comics_de (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Japanese comics
-CREATE TABLE IF NOT EXISTS comics_ja (
+
+-- Russian comics
+CREATE TABLE IF NOT EXISTS comics_ru (
     id INTEGER PRIMARY KEY,
     title TEXT NOT NULL,
     alt TEXT,

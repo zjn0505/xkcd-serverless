@@ -1,20 +1,4 @@
-import { WorkflowEntrypoint, WorkflowStep, WorkflowEvent } from 'cloudflare:workers';
-
-// KV state structure (shared with traditional crawler)
-interface CrawlerState {
-  allComicIds: number[];
-  processedIds: number[];
-  lastScanTime: number;
-  zh_cn_total?: number;
-}
-
-// Workflow environment bindings
-interface Env {
-  DB: D1Database;
-  CRAWLER_STATE: KVNamespace;
-}
-
-type Params = Record<string, never>;
+import { BaseLocalizedCrawlerWorkflow, CrawlerConfig, ComicData } from './base_localized_crawler';
 
 /**
  * zh-CN Crawler Workflow
@@ -30,265 +14,46 @@ type Params = Record<string, never>;
  * 3. process-batch: Process 10-15 comics
  * 4. save-state: Update KV with progress
  */
-export class ZhCnCrawlerWorkflow extends WorkflowEntrypoint<Env, Params> {
-  private readonly KV_KEY = 'zh-cn-crawler-state';
-  private readonly BATCH_SIZE = 10; // Conservative batch size to stay within 50 subrequest limit
+export class ZhCnCrawlerWorkflow extends BaseLocalizedCrawlerWorkflow {
+  protected readonly config: CrawlerConfig = {
+    language: 'zh-cn',
+    kvKey: 'zh-cn-crawler-state',
+    tableName: 'comics_zh_cn',
+    batchSize: 10, // Conservative batch size to stay within 50 subrequest limit
+    totalField: 'zh_cn_total'
+  };
 
-  async run(event: WorkflowEvent<Params>, step: WorkflowStep) {
-    // Step 1: Check current state and get first page data
-    const stateCheck = await step.do('check-state', async () => {
-      const [pageData, kvState] = await Promise.all([
-        this.getDataCountsWithFirstPage(),
-        this.getKVState()
-      ]);
+  // ===== Abstract method implementations =====
 
-      const action = this.determineAction(kvState, pageData.dataCounts);
-      
-      return {
-        action,
-        dataCounts: Number(pageData.dataCounts),
-        totalPages: Number(pageData.totalPages),
-        hasKVState: kvState !== null,
-        pendingCount: kvState ? kvState.allComicIds.length - kvState.processedIds.length : 0,
-        firstPageIds: pageData.comicIds
-      };
-    });
-
-    // Step 2: Handle different actions
-    if (stateCheck.action === 'SKIP') {
-      return {
-        success: true,
-        action: 'SKIP',
-        processed: 0,
-        message: 'No changes detected'
-      };
-    }
-
-    if (stateCheck.action === 'SCAN') {
-      const scanResult = await step.do('scan-site', async () => {
-        const existingComics = await this.getExistingComics();
-        const expectedNew = stateCheck.dataCounts - existingComics.size;
-        
-        // Optimization: Try first page only
-        const firstPagePending = stateCheck.firstPageIds.filter(id => !existingComics.has(id));
-        
-        if (expectedNew > 0 && firstPagePending.length >= expectedNew) {
-          // All new comics found on first page!
-          const newState: CrawlerState = {
-            allComicIds: firstPagePending,
-            processedIds: [],
-            lastScanTime: Date.now(),
-            zh_cn_total: stateCheck.dataCounts
-          };
-          await this.saveKVState(newState);
-          
-          return {
-            totalFound: stateCheck.firstPageIds.length,
-            alreadyInDB: existingComics.size,
-            pending: firstPagePending.length,
-            optimized: true,
-            pagesScanned: 1
-          };
-        }
-        
-        // Need to scan more pages
-        const allComicIds = await this.scanAllPagesOptimized(existingComics, expectedNew, stateCheck.firstPageIds, stateCheck.totalPages);
-        const pendingIds = allComicIds.filter(id => !existingComics.has(id));
-
-        const newState: CrawlerState = {
-          allComicIds: pendingIds,
-          processedIds: [],
-          lastScanTime: Date.now(),
-          zh_cn_total: stateCheck.dataCounts
-        };
-        await this.saveKVState(newState);
-
-        return {
-          totalFound: allComicIds.length,
-          alreadyInDB: existingComics.size,
-          pending: pendingIds.length,
-          optimized: false
-        };
-      });
-
-      if (scanResult.pending === 0) {
-        return {
-          success: true,
-          action: 'SCAN',
-          processed: 0,
-          message: 'Scan complete, no pending comics'
-        };
-      }
-    }
-
-    // Step 3: Process a batch
-    const processResult = await step.do('process-batch', async () => {
-      const state = await this.getKVState();
-      if (!state) {
-        throw new Error('No state found after scan');
-      }
-
-      const remainingIds = state.allComicIds.filter(id => !state.processedIds.includes(id));
-      const batchIds = remainingIds.slice(0, this.BATCH_SIZE);
-
-      let processed = 0;
-      let added = 0;
-      let errors = 0;
-      const failedIds: number[] = [];
-
-      for (const id of batchIds) {
-        try {
-          const comicData = await this.fetchComic(id);
-          if (comicData) {
-            await this.saveComic(comicData);
-            added++;
-          }
-          processed++;
-          state.processedIds.push(id);
-        } catch (error) {
-          errors++;
-          failedIds.push(id);
-          state.processedIds.push(id);
-        }
-
-        if (processed < batchIds.length) {
-          await new Promise(r => setTimeout(r, 1000));
-        }
-      }
-
-      await this.saveKVState(state);
-
-      return {
-        processed,
-        added,
-        errors,
-        failedIds,
-        remaining: state.allComicIds.length - state.processedIds.length
-      };
-    });
-
-    return {
-      success: processResult.errors === 0,
-      action: stateCheck.action,
-      ...processResult
-    };
+  protected async getCurrentData(): Promise<{ dataCounts: number; totalPages: number; comicIds: number[] }> {
+    return await this.getDataCountsWithFirstPage();
   }
 
-  // ===== Helper Methods =====
-
-  private determineAction(state: CrawlerState | null, currentDataCounts: number): 'SKIP' | 'SCAN' | 'PROCESS' {
-    // No state - need to scan
-    if (!state) {
-      return 'SCAN';
-    }
-
-    // Data counts changed - need to rescan
-    if (state.zh_cn_total && state.zh_cn_total !== currentDataCounts) {
-      return 'SCAN';
-    }
-
-    // All comics processed and no new data - skip
-    if (state.processedIds.length >= state.allComicIds.length &&
-        state.zh_cn_total === currentDataCounts) {
-      return 'SKIP';
-    }
-
-    // Has pending comics - process
-    if (state.processedIds.length < state.allComicIds.length) {
-      return 'PROCESS';
-    }
-
-    // All processed but data counts match - need new scan
-    return 'SCAN';
+  protected getTotalFromCurrentData(currentData: { dataCounts: number; totalPages: number; comicIds: number[] }): number {
+    return currentData.dataCounts;
   }
 
-  private async getDataCountsWithFirstPage(): Promise<{ dataCounts: number; totalPages: number; comicIds: number[] }> {
-    const response = await fetch('https://xkcd.in/?lg=cn&page=1');
-    const html = await response.text();
+  protected async getAvailableComicIds(): Promise<number[]> {
+    const pageData = await this.getDataCountsWithFirstPage();
+    return pageData.comicIds;
+  }
+
+  protected async customScanLogic(currentData: { dataCounts: number; totalPages: number; comicIds: number[] }, existingComics: Set<number>): Promise<number[]> {
+    const expectedNew = currentData.dataCounts - existingComics.size;
     
-    // Extract data_counts
-    const dataCountsMatch = html.match(/<input[^>]+id=["']data_counts["'][^>]+value=["'](\d+)["']/i) ||
-                           html.match(/<input[^>]+value=["'](\d+)["'][^>]+id=["']data_counts["']/i);
-    const dataCounts = dataCountsMatch ? parseInt(dataCountsMatch[1]) : 0;
+    // Optimization: Try first page only
+    const firstPagePending = currentData.comicIds.filter(id => !existingComics.has(id));
     
-    // Extract page_counts
-    const pageCountsMatch = html.match(/<input[^>]+id=["']page_counts["'][^>]+value=["'](\d+)["']/i) ||
-                           html.match(/<input[^>]+value=["'](\d+)["'][^>]+id=["']page_counts["']/i);
-    const totalPages = pageCountsMatch ? parseInt(pageCountsMatch[1]) : 32;
-    
-    // Extract comic IDs from first page (format: /comic?lg=cn&id=3134)
-    const comicIds: number[] = [];
-    const idMatches = html.matchAll(/\/comic\?lg=cn&id=(\d+)/g);
-    for (const match of idMatches) {
-      const id = parseInt(match[1]);
-      if (id > 0) {
-        comicIds.push(id);
-      }
+    if (expectedNew > 0 && firstPagePending.length >= expectedNew) {
+      // All new comics found on first page!
+      return firstPagePending;
     }
     
-    return { dataCounts, totalPages, comicIds };
+    // Need to scan more pages
+    return await this.scanAllPagesOptimized(existingComics, expectedNew, currentData.comicIds, currentData.totalPages);
   }
 
-  private async getKVState(): Promise<CrawlerState | null> {
-    const stateJson = await this.env.CRAWLER_STATE.get(this.KV_KEY);
-    return stateJson ? JSON.parse(stateJson) : null;
-  }
-
-  private async saveKVState(state: CrawlerState): Promise<void> {
-    await this.env.CRAWLER_STATE.put(this.KV_KEY, JSON.stringify(state));
-  }
-
-  private async scanAllPagesOptimized(
-    existingComics: Set<number>,
-    expectedNew: number,
-    firstPageIds: number[],
-    totalPages: number
-  ): Promise<number[]> {
-    const comicIds = new Set<number>(firstPageIds);
-    let foundNew = firstPageIds.filter(id => !existingComics.has(id)).length;
-
-    // Start from page 2 (already have page 1)
-    for (let page = 2; page <= totalPages; page++) {
-      const response = await fetch(`https://xkcd.in/?lg=cn&page=${page}`);
-      const html = await response.text();
-
-      const idMatches = html.matchAll(/\/comic\?lg=cn&id=(\d+)/g);
-      for (const match of idMatches) {
-        const id = parseInt(match[1]);
-        if (id > 0) {
-          const isNew = comicIds.has(id) === false;
-          comicIds.add(id);
-          
-          // Check if this is a new comic
-          if (isNew && !existingComics.has(id)) {
-            foundNew++;
-          }
-        }
-      }
-
-      // Early exit if found all expected new comics
-      if (expectedNew > 0 && foundNew >= expectedNew) {
-        break;
-      }
-
-      if (page < totalPages) {
-        await new Promise(r => setTimeout(r, 500));
-      }
-    }
-
-    return Array.from(comicIds).sort((a, b) => a - b);
-  }
-
-  private async getExistingComics(): Promise<Set<number>> {
-    const result = await this.env.DB.prepare('SELECT id FROM comics_zh_cn').all();
-    const ids = new Set<number>();
-    for (const row of result.results as any[]) {
-      ids.add(row.id);
-    }
-    return ids;
-  }
-
-  private async fetchComic(id: number): Promise<any | null> {
+  protected async fetchComic(id: number): Promise<ComicData | null> {
     const response = await fetch(`https://xkcd.in/comic?lg=cn&id=${id}`);
     const html = await response.text();
 
@@ -322,25 +87,86 @@ export class ZhCnCrawlerWorkflow extends WorkflowEntrypoint<Env, Params> {
     return {
       id,
       title,
-      alt,
-      img,
-      transcript: '',
-      source_url: `https://xkcd.in/comic?lg=cn&id=${id}`
+      imageUrl: img,
+      altText: alt,
+      originalUrl: `https://xkcd.in/comic?lg=cn&id=${id}`
     };
   }
 
-  private async saveComic(comic: any): Promise<void> {
-    await this.env.DB.prepare(`
-      INSERT OR REPLACE INTO comics_zh_cn (id, title, alt, img, transcript, source_url)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).bind(
-      comic.id,
-      comic.title,
-      comic.alt,
-      comic.img,
-      comic.transcript,
-      comic.source_url
-    ).run();
+  // ===== Helper methods =====
+
+  private async getDataCountsWithFirstPage(): Promise<{ dataCounts: number; totalPages: number; comicIds: number[] }> {
+    const response = await fetch('https://xkcd.in/?lg=cn&page=1');
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch xkcd.in page 1: HTTP ${response.status}`);
+    }
+    
+    const html = await response.text();
+    
+    const dataCountsMatch = html.match(/<input[^>]+id=["']data_counts["'][^>]+value=["'](\d+)["']/i) ||
+                           html.match(/<input[^>]+value=["'](\d+)["'][^>]+id=["']data_counts["']/i);
+    
+    if (!dataCountsMatch) {
+      throw new Error('Failed to parse data_counts from xkcd.in - HTML structure may have changed');
+    }
+    
+    const dataCounts = parseInt(dataCountsMatch[1]);
+    
+    const pageCountsMatch = html.match(/<input[^>]+id=["']page_counts["'][^>]+value=["'](\d+)["']/i) ||
+                           html.match(/<input[^>]+value=["'](\d+)["'][^>]+id=["']page_counts["']/i);
+    
+    if (!pageCountsMatch) {
+      throw new Error('Failed to parse page_counts from xkcd.in - HTML structure may have changed');
+    }
+    
+    const totalPages = parseInt(pageCountsMatch[1]);
+    
+    const comicIds: number[] = [];
+    const idMatches = html.matchAll(/\/comic\?lg=cn&id=(\d+)/g);
+    for (const match of idMatches) {
+      const id = parseInt(match[1]);
+      if (id > 0) {
+        comicIds.push(id);
+      }
+    }
+    
+    if (comicIds.length === 0) {
+      throw new Error('Failed to parse any comic IDs from xkcd.in page 1 - HTML structure may have changed');
+    }
+    
+    return { dataCounts, totalPages, comicIds };
+  }
+
+  private async scanAllPagesOptimized(
+    existingComics: Set<number>,
+    expectedNew: number,
+    firstPageIds: number[],
+    totalPages: number
+  ): Promise<number[]> {
+    const comicIds = new Set<number>(firstPageIds);
+    let foundNew = firstPageIds.filter(id => !existingComics.has(id)).length;
+    
+    // Scan additional pages if needed
+    for (let page = 2; page <= totalPages && foundNew < expectedNew; page++) {
+      const response = await fetch(`https://xkcd.in/?lg=cn&page=${page}`);
+      const html = await response.text();
+      
+      const idMatches = html.matchAll(/\/comic\?lg=cn&id=(\d+)/g);
+      for (const match of idMatches) {
+        const id = parseInt(match[1]);
+        if (id > 0 && !comicIds.has(id)) {
+          comicIds.add(id);
+          if (!existingComics.has(id)) {
+            foundNew++;
+          }
+        }
+      }
+      
+      // Rate limiting
+      await new Promise(r => setTimeout(r, 1000));
+    }
+
+    return Array.from(comicIds).sort((a, b) => a - b);
   }
 }
-

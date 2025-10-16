@@ -20,6 +20,21 @@ binding = "ZH_CN_CRAWLER"
 name = "xkcd-zh-cn-crawler"
 class_name = "ZhCnCrawlerWorkflow"
 
+[[workflows]]
+binding = "FR_CRAWLER"
+name = "xkcd-fr-crawler"
+class_name = "FrCrawlerWorkflow"
+
+[[workflows]]
+binding = "ZH_TW_CRAWLER"
+name = "xkcd-zh-tw-crawler"
+class_name = "ZhTwCrawlerWorkflow"
+
+[[workflows]]
+binding = "RU_CRAWLER"
+name = "xkcd-ru-crawler"
+class_name = "RuCrawlerWorkflow"
+
 # Routes
 [[routes]]
 pattern = "api2.jienan.xyz/xkcd/*"
@@ -33,9 +48,8 @@ custom_domain = true
 # Cron Triggers for crawlers
 [triggers]
 crons = [
-  "0 * * * *",      # XKCD hourly (every hour at :00)
-  "15 0 * * *",     # What If daily at 00:15 UTC
-  "*/15 * * * *"    # zh-CN localized every 15 minutes (incremental)
+  "*/1 * * * *",    # Minute dispatcher: xkcd every minute; zh-CN every 15m
+  "15 0 * * *"      # Daily dispatcher: What If + localized dailies
 ]
 
 # [env.development]

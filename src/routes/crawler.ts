@@ -74,21 +74,52 @@ export function registerCrawlerRoutes(router: RouterType) {
     }
   });
 
-  router.post('/crawler/localized/zh-cn/start', async (request, env, ctx, { db }) => {
+  // Generic localized crawler starter
+  const localizedCrawlers = {
+    'zh-cn': {
+      binding: 'ZH_CN_CRAWLER',
+      name: 'zh-CN'
+    },
+    'fr': {
+      binding: 'FR_CRAWLER', 
+      name: 'fr'
+    },
+    'zh-tw': {
+      binding: 'ZH_TW_CRAWLER',
+      name: 'zh-TW'
+    },
+    'ru': {
+      binding: 'RU_CRAWLER',
+      name: 'ru'
+    }
+  };
+
+  // POST /crawler/localized/:language/start
+  router.post('/crawler/localized/:language/start', async (request, env, ctx, { db }) => {
     try {
-      if (env.ZH_CN_CRAWLER) {
-        const instance = await env.ZH_CN_CRAWLER.create();
+      const language = request.params?.language;
+      
+      if (!language || !localizedCrawlers[language as keyof typeof localizedCrawlers]) {
+        return createErrorResponse(`Invalid language. Supported: ${Object.keys(localizedCrawlers).join(', ')}`, 400);
+      }
+
+      const crawlerConfig = localizedCrawlers[language as keyof typeof localizedCrawlers];
+      const workflowBinding = env[crawlerConfig.binding as keyof typeof env];
+      
+      if (workflowBinding) {
+        const instance = await workflowBinding.create();
         return createJsonResponse({
-          message: 'Localized zh-CN crawler workflow started',
+          message: `Localized ${crawlerConfig.name} crawler workflow started`,
           workflowId: instance.id,
+          language,
           timestamp: new Date().toISOString()
         });
       } else {
-        return createErrorResponse('ZH_CN_CRAWLER Workflow binding not found');
+        return createErrorResponse(`${crawlerConfig.binding} Workflow binding not found`);
       }
     } catch (error) {
-      console.error('Error in /crawler/localized/zh-cn/start:', error);
-      return createErrorResponse('Failed to start localized crawler');
+      console.error(`Error in /crawler/localized/${request.params?.language}/start:`, error);
+      return createErrorResponse(`Failed to start ${request.params?.language} localized crawler`);
     }
   });
 

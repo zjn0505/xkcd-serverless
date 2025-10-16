@@ -49,8 +49,11 @@ export function registerXkcdRoutes(router: RouterType) {
   router.get('/:comicId/info.0.json', withCache(async (request, env, ctx, { db }) => {
     try {
       const url = new URL(request.url);
-      const comicId = parseInt(url.pathname.split('/')[1]);
-      if (isNaN(comicId)) return createErrorResponse('Invalid comic ID', 400);
+      // Extract comicId from /xkcd/:comicId/info.0.json pattern (with base /xkcd)
+      const pathMatch = url.pathname.match(/^\/xkcd\/(\d+)\/info\.0\.json$/);
+      if (!pathMatch) return createErrorResponse('Invalid comic ID', 400);
+      const comicId = parseInt(pathMatch[1]);
+      if (isNaN(comicId) || comicId <= 0) return createErrorResponse('Invalid comic ID', 400);
 
       const localeParam = url.searchParams.get('locale');
       if (localeParam) {

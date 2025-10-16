@@ -147,7 +147,7 @@ export class Database {
   }
 
   async getAvailableLanguages(comicId: number): Promise<SupportedLanguage[]> {
-    const languages: SupportedLanguage[] = ['zh-cn', 'zh-tw', 'es', 'fr', 'de', 'ja'];
+    const languages: SupportedLanguage[] = ['zh-cn', 'zh-tw', 'es', 'fr', 'de', 'ru'];
     const availableLanguages: SupportedLanguage[] = [];
     
     for (const lang of languages) {
