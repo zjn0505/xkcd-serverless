@@ -8,6 +8,13 @@ export interface CrawlerState {
   [key: string]: any; // Allow language-specific total fields
 }
 
+export interface CurrentRemoteData {
+  maxComicId?: number;
+  comicIds?: number[];
+  totalCount?: number;
+  [key: string]: any; // Allow language-specific total fields
+}
+
 export interface Env {
   DB: D1Database;
   CRAWLER_STATE: KVNamespace;
@@ -47,7 +54,7 @@ export abstract class BaseLocalizedCrawlerWorkflow extends WorkflowEntrypoint<En
     // Step 1: Check current state and get current data
     const stateCheck = await step.do('check-state', async () => {
       const [currentData, kvState] = await Promise.all([
-        this.getCurrentData(),
+        this.getCurrentRemoteData(),
         this.getKVState()
       ]);
 
@@ -129,6 +136,7 @@ export abstract class BaseLocalizedCrawlerWorkflow extends WorkflowEntrypoint<En
           processed++;
           state.processedIds.push(id);
         } catch (error) {
+          console.error(`Error fetching comic ${id}:`, error);
           errors++;
           failedIds.push(id);
           state.processedIds.push(id); // Mark as processed to avoid infinite retry
@@ -168,7 +176,7 @@ export abstract class BaseLocalizedCrawlerWorkflow extends WorkflowEntrypoint<En
   /**
    * Get current data from the source (e.g., available IDs, max ID, data counts)
    */
-  protected abstract getCurrentData(): Promise<any>;
+  protected abstract getCurrentRemoteData(): Promise<CurrentRemoteData>;
 
   /**
    * Get available comic IDs from the source
@@ -230,31 +238,46 @@ export abstract class BaseLocalizedCrawlerWorkflow extends WorkflowEntrypoint<En
     `).bind(comic.id, comic.title, comic.imageUrl, comic.altText, comic.originalUrl).run();
   }
 
-  protected determineAction(kvState: CrawlerState | null, currentData: any): 'SKIP' | 'SCAN' | 'PROCESS' {
-    const currentTotal = this.getTotalFromCurrentData(currentData);
-    
+  protected determineAction(kvState: CrawlerState | null, currentData: CurrentRemoteData): 'SKIP' | 'SCAN' | 'PROCESS' {
     // No state - need to scan
     if (!kvState) {
+      console.log(`[${this.config.language}] No KV state found - ACTION: SCAN (initial scan)`);
       return 'SCAN';
     }
 
+    const currentTotal = this.getTotalFromCurrentData(currentData);
+    const cachedTotal = kvState[this.config.totalField] || 0;
+    const pending = kvState.allComicIds.length - kvState.processedIds.length;
+
+    console.log(`[${this.config.language}] State check:`, {
+      currentTotal,
+      cachedTotal,
+      totalComicsInKV: kvState.allComicIds.length,
+      processedCount: kvState.processedIds.length,
+      pendingCount: pending
+    });
+
     // Data counts changed - need to rescan
     if (kvState[this.config.totalField] && kvState[this.config.totalField] !== currentTotal) {
+      console.log(`[${this.config.language}] Total changed: ${cachedTotal} -> ${currentTotal} - ACTION: SCAN (rescan for new comics)`);
       return 'SCAN';
     }
 
     // All comics processed and no new data - skip
     if (kvState.processedIds.length >= kvState.allComicIds.length &&
         kvState[this.config.totalField] === currentTotal) {
+      console.log(`[${this.config.language}] All comics processed (${kvState.processedIds.length}/${kvState.allComicIds.length}) - ACTION: SKIP`);
       return 'SKIP';
     }
 
     // Has pending comics - process
     if (kvState.processedIds.length < kvState.allComicIds.length) {
+      console.log(`[${this.config.language}] Pending comics found: ${pending} - ACTION: PROCESS (batch: ${this.config.batchSize})`);
       return 'PROCESS';
     }
 
     // Default to scan if state is inconsistent
+    console.log(`[${this.config.language}] Inconsistent state detected - ACTION: SCAN (safety fallback)`);
     return 'SCAN';
   }
 }

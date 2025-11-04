@@ -124,7 +124,7 @@ export default {
    */
   async scheduled(event: ScheduledEvent, env: any, ctx: ExecutionContext): Promise<void> {
     try {
-      console.log('Cron trigger fired:', event.cron);
+      // console.log('Cron trigger fired:', event.cron);
       
       // Initialize database
       const db = new Database(env.DB);
@@ -168,7 +168,7 @@ export default {
         }
       }
       
-      console.log('Crawlers started via cron trigger');
+      // console.log('Crawlers started via cron trigger');
     } catch (error) {
       console.error('Error in scheduled handler:', error);
     }

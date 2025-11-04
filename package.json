@@ -7,11 +7,17 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "build": "tsc",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:unit": "vitest run tests/unit/*.test.ts",
+    "test:integration": "vitest run tests/e2e/*.integration.test.ts"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.9.13",
     "@cloudflare/workers-types": "^4.20231218.0",
     "typescript": "^5.3.0",
+    "vitest": "^3.2.4",
     "wrangler": "^4.42.2"
   },
   "dependencies": {
