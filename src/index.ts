@@ -20,18 +20,18 @@ export { RuCrawlerWorkflow } from './workflows/ru_crawler';
 export { DeCrawlerWorkflow } from './workflows/de_crawler';
 export { EsCrawlerWorkflow } from './workflows/es_crawler';
 
-// Create API router for api2.jienan.xyz/xkcd
+// Create API router for API domains
 const apiRouter = Router({ base: '/xkcd' });
 registerHealthRoutes(apiRouter);
 registerXkcdRoutes(apiRouter);
 registerWhatIfRoutes(apiRouter);
 
-// Create localized router for xkcd2.jienan.xyz
+// Create localized router for localized domains
 const localizedRouter = Router();
 registerHealthRoutes(localizedRouter);
 registerLocalizedRoutes(localizedRouter);
 
-// Create main router (default for xkcd.zjn0505.workers.dev)
+// Create main router (default for workers.dev)
 const mainRouter = Router();
 registerHealthRoutes(mainRouter);
 registerXkcdRoutes(mainRouter);
@@ -107,14 +107,17 @@ export default {
       const hostname = url.hostname;
       
       // Route based on hostname
-      if (hostname === 'api2.jienan.xyz' && url.pathname.startsWith('/xkcd')) {
-        // api2.jienan.xyz/xkcd/* -> apiRouter (XKCD + What If)
+      const apiHostname = env.API_HOSTNAME;
+      const localizedHostname = env.LOCALIZED_HOSTNAME;
+      
+      if (hostname === apiHostname && url.pathname.startsWith('/xkcd')) {
+        // api_hostname/xkcd/* -> apiRouter (XKCD + What If)
         return apiRouter.handle(request, env, ctx, { db });
-      } else if (hostname === 'xkcd2.jienan.xyz') {
-        // xkcd2.jienan.xyz/* -> localizedRouter (Localized only)
+      } else if (hostname === localizedHostname) {
+        // localized_hostname/* -> localizedRouter (Localized only)
         return localizedRouter.handle(request, env, ctx, { db });
       } else {
-        // Default: xkcd.zjn0505.workers.dev -> mainRouter (all routes)
+        // Default: workers.dev -> mainRouter (all routes)
         return mainRouter.handle(request, env, ctx, { db });
       }
     } catch (error) {

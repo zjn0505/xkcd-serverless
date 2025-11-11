@@ -5,6 +5,10 @@ compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 minify = true
 
+# Environment Variables
+[vars]
+API_HOSTNAME = "api2.jienan.xyz"
+LOCALIZED_HOSTNAME = "xkcd2.jienan.xyz"
 
 [[d1_databases]]
 binding = "DB"
