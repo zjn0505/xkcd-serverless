@@ -40,17 +40,16 @@ export class RuCrawlerStrategy implements LocalizedCrawlerStrategy {
     }
     
     const imageUrl = HtmlParserHelper.makeAbsoluteUrl(imgMatch[1], this.BASE_URL);
-    const altText = imgMatch[2] || '';
     
     // Extract alt text from <div class="comics_text">...</div>
-    const altMatch = html.match(/<div class="comics_text">([^<]*)<\/div>/);
+    // Use [\s\S]*? to match any character including < and >, but non-greedy to stop at </div>
+    const altMatch = html.match(/<div class="comics_text">([\s\S]*?)<\/div>/);
     const comicsText = altMatch ? altMatch[1].trim() : '';
-    
     return {
       id,
       title: titleMatch[1].trim(),
       imageUrl,
-      altText: comicsText || altText, // Use comics_text as alt text if available
+      altText: comicsText, // Use comics_text as alt text if available
       originalUrl: `${this.BASE_URL}/${id}`
     };
   }

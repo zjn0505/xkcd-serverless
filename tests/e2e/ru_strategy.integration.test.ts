@@ -1,6 +1,7 @@
 /**
  * Test RU crawler strategy
  * npm run test:integration
+ * npx vitest run tests/e2e/ru_strategy.integration.test.ts
  */
 
 import { describe, test, expect } from 'vitest';
@@ -34,6 +35,18 @@ describe('RuCrawlerStrategy - Integration Tests', () => {
         const result = await strategy.fetchComic(99999);
         expect(result).toBeNull();
     });
+
+    test('Test 859 from xkcd.ru', async () => {
+        const result = await strategy.fetchComic(859);
+        expect(result).toBeDefined();
+        expect(result).toHaveProperty('id', 859);
+        expect(result).toHaveProperty('title');
+        expect(result?.title).toBe('(');
+        expect(result).toHaveProperty('imageUrl');
+        expect(result).toHaveProperty('altText');
+        expect(result?.altText).toBe("Ладно мозг, интересно, сколько кривых парсеров xkcd.com сломаются на этом названии (либо на \\;;”\\''{\\<<[' этом alt-тексте.");
+        expect(result).toHaveProperty('originalUrl');
+    }, TIMEOUT);
 
     test('should get available comic ids', async () => {
         const ids = await strategy.fetchAvailableComicIds();

@@ -17,6 +17,7 @@ export { FrCrawlerWorkflow } from './workflows/fr_crawler';
 export { ZhTwCrawlerWorkflow } from './workflows/zh_tw_crawler';
 export { RuCrawlerWorkflow } from './workflows/ru_crawler';
 export { DeCrawlerWorkflow } from './workflows/de_crawler';
+export { EsCrawlerWorkflow } from './workflows/es_crawler';
 
 // Create API router for api2.jienan.xyz/xkcd
 const apiRouter = Router({ base: '/xkcd' });
@@ -172,6 +173,12 @@ export default {
         if (env.DE_CRAWLER) {
           const deInstance = await env.DE_CRAWLER.create();
           console.log('de Workflow started:', deInstance.id);
+        }
+
+        // es daily
+        if (env.ES_CRAWLER) {
+          const esInstance = await env.ES_CRAWLER.create();
+          console.log('es Workflow started:', esInstance.id);
         }
       }
       
