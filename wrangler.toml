@@ -37,6 +37,11 @@ binding = "RU_CRAWLER"
 name = "xkcd-ru-crawler"
 class_name = "RuCrawlerWorkflow"
 
+[[workflows]]
+binding = "DE_CRAWLER"
+name = "xkcd-de-crawler"
+class_name = "DeCrawlerWorkflow"
+
 # Routes
 [[routes]]
 pattern = "api2.jienan.xyz/xkcd/*"

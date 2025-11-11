@@ -66,13 +66,13 @@ export class DataSync {
               title: comic.title,
               alt: comic.alt,
               img: comic.img,
-              transcript: null, // API doesn't provide transcript
+              transcript: undefined, // API doesn't provide transcript
               year: parseInt(comic.year),
               month: parseInt(comic.month),
               day: parseInt(comic.day),
-              link: null,
-              news: null,
-              safe_title: null
+              link: undefined,
+              news: undefined,
+              safe_title: undefined
             });
 
             // Insert like count if available

@@ -16,6 +16,7 @@ export { ZhCnCrawlerWorkflow } from './workflows/zh_cn_crawler';
 export { FrCrawlerWorkflow } from './workflows/fr_crawler';
 export { ZhTwCrawlerWorkflow } from './workflows/zh_tw_crawler';
 export { RuCrawlerWorkflow } from './workflows/ru_crawler';
+export { DeCrawlerWorkflow } from './workflows/de_crawler';
 
 // Create API router for api2.jienan.xyz/xkcd
 const apiRouter = Router({ base: '/xkcd' });
@@ -149,7 +150,7 @@ export default {
         const whatIfCrawler = new WhatIfCrawler(db);
         ctx.waitUntil(whatIfCrawler.crawl());
 
-        // fr daily (monthly previously; daily OK, state will skip if no change)
+        // fr daily
         if (env.FR_CRAWLER) {
           const frInstance = await env.FR_CRAWLER.create();
           console.log('fr Workflow started:', frInstance.id);
@@ -165,6 +166,12 @@ export default {
         if (env.RU_CRAWLER) {
           const ruInstance = await env.RU_CRAWLER.create();
           console.log('ru Workflow started:', ruInstance.id);
+        }
+
+        // de daily
+        if (env.DE_CRAWLER) {
+          const deInstance = await env.DE_CRAWLER.create();
+          console.log('de Workflow started:', deInstance.id);
         }
       }
       

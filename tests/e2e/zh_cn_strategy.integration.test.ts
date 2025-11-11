@@ -12,7 +12,7 @@ describe('ZhCnCrawlerStrategy - Integration Tests', () => {
 
     const TIMEOUT = 10000;
 
-    test('should fetch real comic #852 from xkcd.lapin.org', async () => {
+    test('should fetch real comic #852 from xkcd.in', async () => {
         const result = await strategy.fetchComic(3142);
 
         expect(result).toBeDefined();

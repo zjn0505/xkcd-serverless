@@ -204,7 +204,7 @@ export class XkcdCrawler extends BaseCrawler {
         LIMIT 1
       `).first();
 
-      const isRunning = latestTask && (latestTask as any).status === 'running';
+      const isRunning = !!(latestTask && (latestTask as any).status === 'running');
       const lastRun = latestTask ? new Date((latestTask as any).created_at) : undefined;
       
       // Calculate next run (assuming hourly schedule)

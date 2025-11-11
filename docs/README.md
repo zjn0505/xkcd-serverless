@@ -50,7 +50,6 @@
 - Update frequency forecast: never, uncertain.
 - Crawling frequence: daily, make sure the cost is just the smallest CPU time.
 - Tricks: n/a
-- TODO: crawling not complted
 - total ids right now: 1851
 - Latest id diff compared to the official site: 1304, 3155-1851
 
@@ -63,7 +62,7 @@
 - Update frequency forecast: never, now updates in last 4 years.
 - Crawling frequence: daily, make sure the cost is just the smallest CPU time. Check https://xkcde.dapete.net/rss.php for any new updates.
 - Tricks: there is no way to get all the ids. Have to iterate page by page.
-- total ids right now: unknown, about 350
+- total ids right now: 193
 - Latest id diff compared to the official site: 1993, 3155-1162
 
 

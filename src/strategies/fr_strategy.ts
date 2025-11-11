@@ -17,6 +17,13 @@ export class FrCrawlerStrategy implements LocalizedCrawlerStrategy {
         // Extract title from <h1>Title</h1>
         const titleMatch = html.match(/<h2[^>]*>([^<]+)<\/h2>/);
         if (!titleMatch) {
+            // Check for "Cet épisode n'existe pas" error page and return null if detected
+            if (
+                html.includes("Cet épisode n'existe pas") &&
+                html.includes("This episode does'nt exist")
+            ) {
+                return null;
+            }
             throw new Error(`Failed to parse title for comic ${id}`);
         }
 

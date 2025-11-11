@@ -31,7 +31,8 @@ describe('FrCrawlerStrategy - Integration Tests', () => {
     }, TIMEOUT);
 
     test('should handle non-existent comic (99999)', async () => {
-        await expect(strategy.fetchComic(99999)).rejects.toThrow();
+        const result = await strategy.fetchComic(99999);
+        expect(result).toBeNull();
     }, TIMEOUT);
 
     test('should fetch multiple real comics', async () => {
