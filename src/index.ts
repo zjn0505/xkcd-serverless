@@ -9,6 +9,7 @@ import { registerWhatIfRoutes } from './routes/whatif';
 import { registerLocalizedRoutes } from './routes/localized';
 import { registerAdminRoutes } from './routes/admin';
 import { registerCrawlerRoutes } from './routes/crawler';
+import { registerViewerRoutes } from './routes/viewer';
 import overviewHtml from '../public/overview.html';
 
 // Export Workflows
@@ -38,6 +39,7 @@ registerWhatIfRoutes(mainRouter);
 registerLocalizedRoutes(mainRouter);
 registerAdminRoutes(mainRouter);
 registerCrawlerRoutes(mainRouter);
+registerViewerRoutes(mainRouter);
 
 // ============================================================================
 // CORS AND ERROR HANDLING
