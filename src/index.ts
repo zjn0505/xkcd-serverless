@@ -10,7 +10,6 @@ import { registerLocalizedRoutes } from './routes/localized';
 import { registerAdminRoutes } from './routes/admin';
 import { registerCrawlerRoutes } from './routes/crawler';
 import { registerViewerRoutes } from './routes/viewer';
-import overviewHtml from '../public/overview.html';
 
 // Export Workflows
 export { ZhCnCrawlerWorkflow } from './workflows/zh_cn_crawler';
@@ -62,17 +61,6 @@ const corsHandler = () => {
 apiRouter.options('*', corsHandler);
 localizedRouter.options('*', corsHandler);
 mainRouter.options('*', corsHandler);
-
-/**
- * Serve static files for main router
- */
-mainRouter.get('/overview.html', async () => {  
-  return new Response(overviewHtml, {
-    headers: {
-      'Content-Type': 'text/html; charset=utf-8'
-    }
-  });
-});
 
 // ============================================================================
 // 404 HANDLER

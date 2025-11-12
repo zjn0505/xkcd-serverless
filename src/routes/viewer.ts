@@ -1,5 +1,5 @@
 import { RouterType } from 'itty-router';
-import viewerHtml from '../../public/viewer.html';
+import viewerHtml from '../templates/viewer.html';
 
 /**
  * Register HTML viewer routes

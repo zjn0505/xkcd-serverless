@@ -54,7 +54,7 @@ export function registerAdminRoutes(router: RouterType) {
   });
 
   // GET /overview
-  router.get('/overview', async (request, env, ctx, { db }) => {
+  router.get('/overview.json', async (request, env, ctx, { db }) => {
     try {
       const comicsCount = await db.db.prepare('SELECT COUNT(id) as count FROM comics').first();
       const whatIfCount = await db.db.prepare('SELECT COUNT(id) as count FROM what_if').first();

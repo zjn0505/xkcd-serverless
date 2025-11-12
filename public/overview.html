@@ -259,7 +259,7 @@
             content.style.display = 'none';
             
             try {
-                const response = await fetch('/overview');
+                const response = await fetch('/overview.json');
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }

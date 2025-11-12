@@ -8,7 +8,12 @@ minify = true
 # Environment Variables
 [vars]
 API_HOSTNAME = "api2.jienan.xyz"
-LOCALIZED_HOSTNAME = "xkcd2.jienan.xyz"
+LOCALIZED_HOSTNAME = "xkcd.jienan.xyz"
+
+# Static Assets
+[assets]
+directory = "./public"
+binding = "ASSETS"
 
 [[d1_databases]]
 binding = "DB"
@@ -58,7 +63,7 @@ zone_name = "jienan.xyz"
 
 # Custom domains
 [[routes]]
-pattern = "xkcd2.jienan.xyz"
+pattern = "xkcd.jienan.xyz"
 custom_domain = true
 
 # Cron Triggers for crawlers
