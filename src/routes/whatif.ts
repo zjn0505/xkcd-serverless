@@ -65,8 +65,8 @@ export function registerWhatIfRoutes(router: RouterType) {
   router.post('/what-if-thumb-up', async (request, env, ctx, { db }) => {
     try {
       const formData = await request.formData();
-      const articleId = parseInt((formData.get('article_id') as string) || '0');
-      if (isNaN(articleId) || articleId <= 0) return createErrorResponse('Invalid article_id parameter', 400);
+      const articleId = parseInt((formData.get('what_if_id') as string) || '0');
+      if (isNaN(articleId) || articleId <= 0) return createErrorResponse('Invalid what_if_id parameter', 400);
       const whatIf = await db.getWhatIf(articleId);
       if (!whatIf) return createErrorResponse('What If article not found', 404);
       const newCount = await db.incrementLikeCount(articleId, 'what_if');

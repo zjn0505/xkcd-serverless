@@ -16,18 +16,12 @@ export class WhatIfCrawler extends BaseCrawler {
       const title = titleMatch?.[1]?.replace(/<[^>]*>/g, '').trim() || '';
       const dateMatch = html.match(/<div[^>]*class=\"date\"[^>]*>(.*?)<\/div>/is);
       const date = dateMatch?.[1]?.replace(/<[^>]*>/g, '').trim() || '';
-      const questionMatch = html.match(/<div[^>]*class=\"question\"[^>]*>([\s\S]*?)<\/div>/i);
-      const answerMatch = html.match(/<div[^>]*class=\"answer\"[^>]*>([\s\S]*?)<\/div>/i);
-      const question = questionMatch?.[1]?.replace(/<[^>]*>/g, '').trim() || (title ? `What if ${title}?` : '');
-      const answer = answerMatch?.[1]?.replace(/<[^>]*>/g, '').trim() || '';
       if (!title) return null;
       return {
         id: articleId,
         title,
         url: `https://what-if.xkcd.com/${articleId}/`,
-        date,
-        question,
-        answer: answer || 'Content not available'
+        date
       };
     } catch (error) {
       await this.log('error', `Failed to extract content for article ${articleId}: ${error}`);
@@ -214,9 +208,7 @@ export class WhatIfCrawler extends BaseCrawler {
       id: articleId,
       title: data.title || '',
       url: data.url || `https://what-if.xkcd.com/${articleId}/`,
-      date: data.date || '',
-      question: data.question || '',
-      answer: data.answer || ''
+      date: data.date || ''
     };
   }
 

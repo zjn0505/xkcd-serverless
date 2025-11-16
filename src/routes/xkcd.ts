@@ -1,7 +1,7 @@
 import { RouterType } from 'itty-router';
 import { createJsonResponse, createErrorResponse } from '../http/response';
 import { resolveLocale } from '../i18n/locale';
-import { withCache } from '../http/cache';
+import { withCache, withDynamicCache } from '../http/cache';
 
 // Helper function to convert id to num in response objects
 function convertIdToNum(obj: any): any {
@@ -22,28 +22,66 @@ function convertIdToNum(obj: any): any {
 
 export function registerXkcdRoutes(router: RouterType) {
   // GET /xkcd-list
-  router.get('/xkcd-list', async (request, env, ctx, { db }) => {
+  // Apply dynamic caching: long cache for non-last chunks, short cache for last chunk
+  // Cache time is determined by hasMore flag from response (no hardcoded values)
+  router.get('/xkcd-list', withDynamicCache(async (request, env, ctx, { db }) => {
     try {
       const url = new URL(request.url);
       const start = parseInt(url.searchParams.get('start') || '0');
       const size = parseInt(url.searchParams.get('size') || '100');
       const reversed = url.searchParams.get('reversed') === '1';
 
-      const { comics, hasMore, total } = await db.getComicsWithPagination(start, size, reversed);
+      const { comics, hasMore } = await db.getComicsWithPagination(start, size, reversed);
 
       const response = createJsonResponse(convertIdToNum(comics));
       response.headers.set('X-Pagination-Start', start.toString());
       response.headers.set('X-Pagination-Size', size.toString());
       response.headers.set('X-Pagination-Reversed', reversed ? '1' : '0');
-      response.headers.set('X-Pagination-Total', total.toString());
       response.headers.set('X-Pagination-HasMore', hasMore ? '1' : '0');
-      response.headers.set('X-Pagination-NextStart', hasMore ? (start + size).toString() : '');
+      if (hasMore) {
+        response.headers.set('X-Pagination-NextStart', (start + size).toString());
+      }
       return response;
     } catch (error) {
       console.error('Error in /xkcd-list:', error);
       return createErrorResponse('Failed to fetch comics list');
     }
-  });
+  }, 
+  // Default cache options (used for cache lookup, will be overridden by response-based options)
+  (request) => {
+    // Default to long cache, will be adjusted based on response
+    return { ttl: 86400, browserTtl: 3600 };
+  },
+  // Cache options based on response - determines if this is the last chunk
+  (request, response) => {
+    const url = new URL(request.url);
+    const start = parseInt(url.searchParams.get('start') || '0');
+    const size = parseInt(url.searchParams.get('size') || '100');
+    const reversed = url.searchParams.get('reversed') === '1';
+    const hasMore = response.headers.get('X-Pagination-HasMore') === '1';
+    
+    // For reversed queries, we can't reliably determine last chunk from hasMore alone
+    // So we use default long cache for reversed queries
+    if (reversed) {
+      return { ttl: 86400, browserTtl: 3600 };
+    }
+    
+    // Special case: if size is 1 and start <= 3000, use long cache (old comics)
+    if (size === 1 && start <= 3000) {
+      // Long cache for old comics (24 hours edge, 1 hour browser)
+      return { ttl: 86400, browserTtl: 3600 };
+    }
+    
+    // If hasMore is false, this is the last chunk - use short cache
+    // If hasMore is true, there are more chunks - use long cache
+    if (!hasMore) {
+      // Short cache for last chunk (5 minutes edge, 1 minute browser)
+      return { ttl: 300, browserTtl: 60 };
+    } else {
+      // Long cache for other chunks (24 hours edge, 1 hour browser)
+      return { ttl: 86400, browserTtl: 3600 };
+    }
+  }));
 
   // GET /:comicId/info.0.json (official; supports ?locale fallback)
   router.get('/:comicId/info.0.json', withCache(async (request, env, ctx, { db }) => {
@@ -123,7 +161,7 @@ export function registerXkcdRoutes(router: RouterType) {
   });
 
   // GET /xkcd-suggest
-  router.get('/xkcd-suggest', async (request, env, ctx, { db }) => {
+  router.get('/xkcd-suggest', withCache(async (request, env, ctx, { db }) => {
     try {
       const url = new URL(request.url);
       const keyword = url.searchParams.get('q');
@@ -135,7 +173,11 @@ export function registerXkcdRoutes(router: RouterType) {
       console.error('Error in /xkcd-suggest:', error);
       return createErrorResponse('Failed to search comics');
     }
-  });
+  }, {
+    ttl: 600,        // 10 minutes edge cache
+    browserTtl: 120, // 2 minutes browser cache
+    notFoundTtl: 60  // 1 minute for 404
+  }));
 }
 
 

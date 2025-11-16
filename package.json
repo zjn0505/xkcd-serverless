@@ -11,16 +11,26 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:unit": "vitest run tests/unit/*.test.ts",
-    "test:integration": "vitest run tests/e2e/*.integration.test.ts"
+    "test:integration": "vitest run tests/e2e/*.integration.test.ts",
+    "compare-apis": "ts-node --project tsconfig.scripts.json scripts/compare-apis.ts",
+    "compare-apis:all": "ts-node --project tsconfig.scripts.json scripts/compare-apis.ts --all",
+    "compare-apis:all:report": "ts-node --project tsconfig.scripts.json scripts/compare-apis.ts --all --report",
+    "compare-apis:range": "ts-node --project tsconfig.scripts.json scripts/compare-apis.ts --start=1 --end=100",
+    "compare-apis:latest": "ts-node --project tsconfig.scripts.json scripts/compare-apis.ts --start=1 --end=50",
+    "test:image-probe": "ts-node --project tsconfig.scripts.json scripts/test-image-probe.ts"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.9.13",
     "@cloudflare/workers-types": "^4.20231218.0",
+    "@types/node": "^20.19.25",
+    "@types/probe-image-size": "^7.2.5",
+    "ts-node": "^10.9.2",
     "typescript": "^5.3.0",
     "vitest": "^3.2.4",
     "wrangler": "^4.42.2"
   },
   "dependencies": {
-    "itty-router": "^4.0.23"
+    "itty-router": "^4.0.23",
+    "probe-image-size": "^7.2.3"
   }
 }

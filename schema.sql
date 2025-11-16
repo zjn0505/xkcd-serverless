@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS comics (
     link TEXT,
     news TEXT,
     safe_title TEXT,
+    width INTEGER,
+    height INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -21,8 +23,6 @@ CREATE TABLE IF NOT EXISTS what_if (
     title TEXT NOT NULL,
     url TEXT NOT NULL,
     date TEXT,
-    question TEXT,
-    answer TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

@@ -7,10 +7,13 @@ export class Database {
     this.db = db;
   }
 
+  // Fields to select for comic queries (exclude unused fields: news, transcript, link, safe_title, created_at, updated_at)
+  private readonly COMIC_SELECT_FIELDS = 'id, title, alt, img, year, month, day, width, height';
+
   // Comic related operations
   async getComic(id: number): Promise<Comic | null> {
     const result = await this.db
-      .prepare('SELECT * FROM comics WHERE id = ?')
+      .prepare(`SELECT ${this.COMIC_SELECT_FIELDS} FROM comics WHERE id = ?`)
       .bind(id)
       .first();
     return result as Comic | null;
@@ -18,7 +21,7 @@ export class Database {
 
   async getLatestComic(): Promise<Comic | null> {
     const result = await this.db
-      .prepare('SELECT * FROM comics ORDER BY id DESC LIMIT 1')
+      .prepare(`SELECT ${this.COMIC_SELECT_FIELDS} FROM comics ORDER BY id DESC LIMIT 1`)
       .first();
     return result as Comic | null;
   }
@@ -27,25 +30,41 @@ export class Database {
     const order = reversed ? 'DESC' : 'ASC';
     const operator = reversed ? '<=' : '>=';
     const result = await this.db
-      .prepare(`SELECT * FROM comics WHERE id ${operator} ? ORDER BY id ${order} LIMIT ?`)
+      .prepare(`SELECT ${this.COMIC_SELECT_FIELDS} FROM comics WHERE id ${operator} ? ORDER BY id ${order} LIMIT ?`)
       .bind(start, size)
       .all();
     return result.results as unknown as Comic[];
   }
 
-  async getComicsWithPagination(start: number = 0, size: number = 100, reversed: boolean = false): Promise<{ comics: Comic[], hasMore: boolean, total: number }> {
+  async getComicsWithPagination(start: number = 0, size: number = 100, reversed: boolean = false, includeTotal: boolean = false): Promise<{ comics: Comic[], hasMore: boolean, total: number }> {
     const order = reversed ? 'DESC' : 'ASC';
     const operator = reversed ? '<=' : '>=';
     
-    // Get total count (use COUNT(id) for better performance with primary key)
-    const totalResult = await this.db
-      .prepare('SELECT COUNT(id) as count FROM comics')
-      .first();
-    const total = (totalResult as any).count || 0;
+    // Get total count only if requested (avoid expensive COUNT query when not needed)
+    let total = -1;
+    if (includeTotal) {
+      const totalResult = await this.db
+        .prepare('SELECT COUNT(id) as count FROM comics')
+        .first();
+      total = (totalResult as any).count || 0;
+    }
     
-    // Get comics with one extra record to check if there are more
+    // Optimization for size = 1: query only the needed record, skip hasMore check
+    if (size === 1) {
+      const result = await this.db
+        .prepare(`SELECT ${this.COMIC_SELECT_FIELDS} FROM comics WHERE id ${operator} ? ORDER BY id ${order} LIMIT 1`)
+        .bind(start)
+        .all();
+      
+      const comics = result.results as unknown as Comic[];
+      
+      // When size = 1, hasMore is not needed, always return false
+      return { comics, hasMore: false, total };
+    }
+    
+    // For size > 1, use the original approach (query size + 1 records)
     const result = await this.db
-      .prepare(`SELECT * FROM comics WHERE id ${operator} ? ORDER BY id ${order} LIMIT ?`)
+      .prepare(`SELECT ${this.COMIC_SELECT_FIELDS} FROM comics WHERE id ${operator} ? ORDER BY id ${order} LIMIT ?`)
       .bind(start, size + 1)
       .all();
     
@@ -64,8 +83,8 @@ export class Database {
     await this.db
       .prepare(`
         INSERT OR REPLACE INTO comics 
-        (id, title, alt, img, transcript, year, month, day, link, news, safe_title)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (id, title, alt, img, transcript, year, month, day, link, news, safe_title, width, height)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `)
       .bind(
         comic.id,
@@ -78,26 +97,29 @@ export class Database {
         comic.day || 0,
         comic.link || '',
         comic.news || '',
-        comic.safe_title || ''
+        comic.safe_title || '',
+        comic.width || null,
+        comic.height || null
       )
       .run();
   }
 
 
+  // Fields to select for what_if queries (exclude unused fields: question, answer, created_at, updated_at)
+  private readonly WHATIF_SELECT_FIELDS = 'id, title, url, date';
+
   async insertWhatIf(whatIf: Omit<WhatIf, 'created_at' | 'updated_at'>): Promise<void> {
     await this.db
       .prepare(`
         INSERT OR REPLACE INTO what_if 
-        (id, title, url, date, question, answer)
-        VALUES (?, ?, ?, ?, ?, ?)
+        (id, title, url, date)
+        VALUES (?, ?, ?, ?)
       `)
       .bind(
         whatIf.id,
         whatIf.title || '',
         whatIf.url || '',
-        whatIf.date || '',
-        whatIf.question || '',
-        whatIf.answer || ''
+        whatIf.date || ''
       )
       .run();
   }
@@ -226,7 +248,7 @@ export class Database {
 
   async getRandomComic(): Promise<Comic | null> {
     const result = await this.db
-      .prepare('SELECT * FROM comics ORDER BY RANDOM() LIMIT 1')
+      .prepare(`SELECT ${this.COMIC_SELECT_FIELDS} FROM comics ORDER BY RANDOM() LIMIT 1`)
       .first();
     return result as Comic | null;
   }
@@ -239,9 +261,9 @@ export class Database {
     let params: any[];
     
     if (isNumeric) {
-      // Search by ID or text fields
+      // Search by ID or text fields (transcript used in WHERE but not returned)
       query = `
-        SELECT * FROM comics 
+        SELECT ${this.COMIC_SELECT_FIELDS} FROM comics 
         WHERE id = ? 
            OR title LIKE ? 
            OR alt LIKE ? 
@@ -255,8 +277,9 @@ export class Database {
       params = [numericId, searchTerm, searchTerm, searchTerm, numericId, limit];
     } else {
       // Search with exact match priority using SQL CASE (case insensitive)
+      // transcript used in WHERE/ORDER BY but not returned
       query = `
-        SELECT * FROM comics 
+        SELECT ${this.COMIC_SELECT_FIELDS} FROM comics 
         WHERE title COLLATE NOCASE = ? OR title COLLATE NOCASE LIKE ? OR alt COLLATE NOCASE = ? OR alt COLLATE NOCASE LIKE ? OR transcript COLLATE NOCASE = ? OR transcript COLLATE NOCASE LIKE ?
         ORDER BY 
           CASE 
@@ -304,7 +327,7 @@ export class Database {
     // Get paginated results with one extra record to check if there are more
     const result = await this.db
       .prepare(`
-        SELECT * FROM what_if 
+        SELECT ${this.WHATIF_SELECT_FIELDS} FROM what_if 
         WHERE id ${operator} ?
         ORDER BY id ${order} 
         LIMIT ?
@@ -325,7 +348,7 @@ export class Database {
 
   async getWhatIf(id: number): Promise<WhatIf | null> {
     const result = await this.db
-      .prepare('SELECT * FROM what_if WHERE id = ?')
+      .prepare(`SELECT ${this.WHATIF_SELECT_FIELDS} FROM what_if WHERE id = ?`)
       .bind(id)
       .first();
     return result as WhatIf | null;
@@ -333,7 +356,7 @@ export class Database {
 
   async getRandomWhatIf(): Promise<WhatIf | null> {
     const result = await this.db
-      .prepare('SELECT * FROM what_if ORDER BY RANDOM() LIMIT 1')
+      .prepare(`SELECT ${this.WHATIF_SELECT_FIELDS} FROM what_if ORDER BY RANDOM() LIMIT 1`)
       .first();
     return result as WhatIf | null;
   }
@@ -346,43 +369,36 @@ export class Database {
     let params: any[];
     
     if (isNumeric) {
-      // Search by ID or text fields
+      // Search by ID or title (question and answer fields removed)
       query = `
-        SELECT * FROM what_if 
+        SELECT ${this.WHATIF_SELECT_FIELDS} FROM what_if 
         WHERE id = ? 
-           OR title LIKE ? 
-           OR question LIKE ?
-           OR answer LIKE ?
+           OR title LIKE ?
         ORDER BY 
           CASE WHEN id = ? THEN 1 ELSE 2 END,
           id DESC
         LIMIT ?
       `;
       const searchTerm = `%${keyword}%`;
-      params = [numericId, searchTerm, searchTerm, searchTerm, numericId, limit];
+      params = [numericId, searchTerm, numericId, limit];
     } else {
-      // Search only text fields with word boundary matching priority
+      // Search only title field (question and answer fields removed)
       query = `
-        SELECT * FROM what_if 
-        WHERE title COLLATE NOCASE = ? OR title COLLATE NOCASE LIKE ? OR question COLLATE NOCASE = ? OR question COLLATE NOCASE LIKE ? OR answer COLLATE NOCASE = ? OR answer COLLATE NOCASE LIKE ?
+        SELECT ${this.WHATIF_SELECT_FIELDS} FROM what_if 
+        WHERE title COLLATE NOCASE = ? OR title COLLATE NOCASE LIKE ?
         ORDER BY 
           CASE 
             WHEN title COLLATE NOCASE = ? THEN 1
-            WHEN question COLLATE NOCASE = ? THEN 2
-            WHEN answer COLLATE NOCASE = ? THEN 3
-            WHEN title COLLATE NOCASE LIKE ? THEN 4
-            WHEN question COLLATE NOCASE LIKE ? THEN 5
-            WHEN answer COLLATE NOCASE LIKE ? THEN 6
-            ELSE 7
+            WHEN title COLLATE NOCASE LIKE ? THEN 2
+            ELSE 3
           END,
           id DESC
         LIMIT ?
       `;
       const searchTerm = `%${keyword}%`;
       params = [
-        keyword, searchTerm, keyword, searchTerm, keyword, searchTerm,  // WHERE conditions
-        keyword, keyword, keyword,  // exact matching ORDER BY
-        searchTerm, searchTerm, searchTerm,  // phrase matching ORDER BY
+        keyword, searchTerm,  // WHERE conditions
+        keyword, searchTerm,  // ORDER BY conditions
         limit
       ];
     }

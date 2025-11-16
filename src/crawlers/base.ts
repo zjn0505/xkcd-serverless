@@ -2,6 +2,7 @@
 
 import { Database } from '../database';
 import { CrawlTask, CrawlLog, CrawlError, CrawlResult, CrawlStatus } from './types';
+import { getImageDimensions } from '../utils/image-probe';
 
 export abstract class BaseCrawler {
   protected db: Database;
@@ -207,10 +208,28 @@ export abstract class BaseCrawler {
     }
   }
 
+  /**
+   * Get comic data including image dimensions
+   * Image dimensions are retrieved by only downloading image headers (efficient)
+   */
   protected async getComicData(comicId: number): Promise<any> {
     try {
       const response = await this.fetchWithRetry(`https://xkcd.com/${comicId}/info.0.json`);
-      return await this.parseJsonWithRetry(response);
+      const comicData: any = await this.parseJsonWithRetry(response);
+      
+      // Get image dimensions if image URL exists
+      if (comicData.img) {
+        const dimensions = await getImageDimensions(comicData.img, 10000);
+        if (dimensions) {
+          comicData.width = dimensions.width;
+          comicData.height = dimensions.height;
+          await this.log('info', `Got dimensions for comic ${comicId}: ${dimensions.width}x${dimensions.height}`);
+        } else {
+          await this.log('warn', `Failed to get dimensions for comic ${comicId}, continuing without dimensions`);
+        }
+      }
+      
+      return comicData;
     } catch (error) {
       await this.recordError('FETCH_ERROR', `Failed to get comic ${comicId}: ${error}`);
       throw error;

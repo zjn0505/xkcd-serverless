@@ -78,8 +78,6 @@ export interface WhatIfArticleData {
   title: string;
   url: string;
   date: string;
-  question: string;
-  answer: string;
 }
 
 export interface LocalizedComicData {

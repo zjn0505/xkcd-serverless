@@ -2,7 +2,7 @@
 
 import { Database } from '../database';
 import { BaseCrawler } from './base';
-import { CrawlResult, CrawlStatus, XkcdComicData } from './types';
+import { CrawlResult, CrawlStatus } from './types';
 import { Comic } from '../types';
 
 export class XkcdCrawler extends BaseCrawler {

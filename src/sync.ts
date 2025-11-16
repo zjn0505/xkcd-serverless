@@ -142,9 +142,7 @@ export class DataSync {
               id: article.num,
               title: article.title,
               url: `https://what-if.xkcd.com/${article.num}/`,
-              date: article.date,
-              question: `What if ${article.title}?`,
-              answer: `This is a placeholder answer for ${article.title}.`
+              date: article.date
             });
 
             // Insert like count if available

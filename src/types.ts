@@ -11,6 +11,8 @@ export interface Comic {
   link?: string;
   news?: string;
   safe_title?: string;
+  width?: number;
+  height?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -20,8 +22,6 @@ export interface WhatIf {
   title: string;
   url: string;
   date?: string;
-  question?: string;
-  answer?: string;
   created_at?: string;
   updated_at?: string;
 }

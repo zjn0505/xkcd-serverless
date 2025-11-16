@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noEmit": false,
+    "outDir": "./dist-scripts",
+    "types": ["node", "@cloudflare/workers-types"]
+  },
+  "include": ["scripts/**/*", "src/**/*"],
+  "ts-node": {
+    "compilerOptions": {
+      "module": "commonjs",
+      "moduleResolution": "node",
+      "types": ["node"]
+    }
+  }
+}
+
