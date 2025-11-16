@@ -20,21 +20,18 @@ export class XkcdCrawler extends BaseCrawler {
     const errorDetails: string[] = [];
 
     try {
-      await this.createTask();
-      await this.updateTaskStatus('running', 0);
-      await this.log('info', 'Starting XKCD comic crawl');
+      console.log('Starting XKCD comic crawl');
 
       // Get latest comic ID from XKCD
       const latestComicId = await this.getLatestComicId();
-      await this.log('info', `Latest comic ID: ${latestComicId}`);
+      console.log(`Latest comic ID: ${latestComicId}`);
 
       // Get current latest comic ID from database
       const currentLatest = await this.getCurrentLatestComicId();
-      await this.log('info', `Current latest comic ID in database: ${currentLatest}`);
+      console.log(`Current latest comic ID in database: ${currentLatest}`);
 
       if (latestComicId <= currentLatest) {
-        await this.log('info', 'No new comics to crawl');
-        await this.updateTaskStatus('completed', 100);
+        console.log('No new comics to crawl');
         return {
           success: true,
           items_processed: 0,
@@ -48,13 +45,13 @@ export class XkcdCrawler extends BaseCrawler {
       // Determine range to crawl
       const startId = currentLatest + 1;
       const totalToCrawl = latestComicId - currentLatest;
-      await this.log('info', `Crawling comics ${startId} to ${latestComicId} (${totalToCrawl} comics)`);
+      console.log(`Crawling comics ${startId} to ${latestComicId} (${totalToCrawl} comics)`);
 
       // Crawl comics in batches
       const batchSize = 10;
       for (let currentId = startId; currentId <= latestComicId; currentId += batchSize) {
         const endId = Math.min(currentId + batchSize - 1, latestComicId);
-        await this.log('info', `Processing batch: ${currentId} to ${endId}`);
+        console.log(`Processing batch: ${currentId} to ${endId}`);
 
         const batchResults = await this.crawlBatch(currentId, endId);
         itemsProcessed += batchResults.processed;
@@ -63,18 +60,13 @@ export class XkcdCrawler extends BaseCrawler {
         errors += batchResults.errors;
         errorDetails.push(...batchResults.errorDetails);
 
-        // Update progress
-        const progress = Math.round(((currentId - startId + 1) / totalToCrawl) * 100);
-        await this.updateProgress(currentId - startId + 1, totalToCrawl);
-
         // Add delay between batches to be respectful
         if (currentId + batchSize <= latestComicId) {
           await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
 
-      await this.log('info', `Crawl completed. Processed: ${itemsProcessed}, Added: ${itemsAdded}, Updated: ${itemsUpdated}, Errors: ${errors}`);
-      await this.updateTaskStatus('completed', 100);
+      console.log(`Crawl completed. Processed: ${itemsProcessed}, Added: ${itemsAdded}, Updated: ${itemsUpdated}, Errors: ${errors}`);
 
       return {
         success: errors === 0,
@@ -88,7 +80,6 @@ export class XkcdCrawler extends BaseCrawler {
 
     } catch (error) {
       await this.recordError('CRAWL_ERROR', `Crawl failed: ${error}`, (error as Error).stack);
-      await this.updateTaskStatus('failed', undefined, (error as Error).message);
       
       return {
         success: false,
@@ -107,7 +98,7 @@ export class XkcdCrawler extends BaseCrawler {
       const result = await this.db.db.prepare('SELECT MAX(id) as max_id FROM comics').first();
       return (result as any)?.max_id || 0;
     } catch (error) {
-      await this.log('warn', `Failed to get current latest comic ID: ${error}`);
+      console.warn(`Failed to get current latest comic ID: ${error}`);
       return 0;
     }
   }
@@ -127,7 +118,7 @@ export class XkcdCrawler extends BaseCrawler {
 
     for (let comicId = startId; comicId <= endId; comicId++) {
       try {
-        await this.log('info', `Crawling comic ${comicId}`);
+        console.log(`Crawling comic ${comicId}`);
         
         const comicData = await this.getComicData(comicId);
         const comic = this.transformComicData(comicData);
@@ -139,12 +130,12 @@ export class XkcdCrawler extends BaseCrawler {
           // Update existing comic
           await this.db.insertComic(comic);
           updated++;
-          await this.log('info', `Updated comic ${comicId}: ${comic.title}`);
+          console.log(`Updated comic ${comicId}: ${comic.title}`);
         } else {
           // Add new comic
           await this.db.insertComic(comic);
           added++;
-          await this.log('info', `Added comic ${comicId}: ${comic.title}`);
+          console.log(`Added comic ${comicId}: ${comic.title}`);
           
           // Send FCM notification if enabled
           const fcmConfig = this.getFcmConfig();
@@ -163,12 +154,16 @@ export class XkcdCrawler extends BaseCrawler {
                   day: comic.day,
                   width: comic.width,
                   height: comic.height,
+                },
+                {
+                  testMode: fcmConfig.testMode,
+                  testToken: fcmConfig.testToken,
                 }
               );
-              await this.log('info', `Sent FCM notification for comic ${comicId}`);
+              console.log(`Sent FCM notification for comic ${comicId}${fcmConfig.testMode ? ' (TEST MODE)' : ''}`);
             } catch (error) {
               // Log error but don't fail the crawl
-              await this.log('warn', `Failed to send FCM notification for comic ${comicId}: ${error}`);
+              console.warn(`Failed to send FCM notification for comic ${comicId}: ${error}`);
             }
           }
         }
@@ -178,7 +173,7 @@ export class XkcdCrawler extends BaseCrawler {
         errors++;
         const errorMsg = `Failed to crawl comic ${comicId}: ${error}`;
         errorDetails.push(errorMsg);
-        await this.log('error', errorMsg);
+        console.error(errorMsg);
         await this.recordError('COMIC_CRAWL_ERROR', errorMsg, (error as Error).stack);
       }
     }
@@ -203,70 +198,20 @@ export class XkcdCrawler extends BaseCrawler {
   }
 
   async getStatus(): Promise<CrawlStatus> {
-    try {
-      // Get latest task
-      const latestTask = await this.db.db.prepare(`
-        SELECT * FROM crawl_tasks 
-        WHERE type = 'xkcd' 
-        ORDER BY created_at DESC 
-        LIMIT 1
-      `).first();
-
-      // Get task statistics
-      const stats = await this.db.db.prepare(`
-        SELECT 
-          COUNT(id) as total_tasks,
-          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
-          SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_tasks
-        FROM crawl_tasks 
-        WHERE type = 'xkcd'
-      `).first();
-
-      // Get last error
-      const lastError = await this.db.db.prepare(`
-        SELECT error_message 
-        FROM crawl_tasks 
-        WHERE type = 'xkcd' AND status = 'failed' 
-        ORDER BY created_at DESC 
-        LIMIT 1
-      `).first();
-
-      const isRunning = !!(latestTask && (latestTask as any).status === 'running');
-      const lastRun = latestTask ? new Date((latestTask as any).created_at) : undefined;
-      
-      // Calculate next run (assuming hourly schedule)
-      const nextRun = lastRun ? new Date(lastRun.getTime() + 60 * 60 * 1000) : undefined;
-
-      return {
-        is_running: isRunning,
-        last_run: lastRun,
-        next_run: nextRun,
-        total_tasks: (stats as any)?.total_tasks || 0,
-        completed_tasks: (stats as any)?.completed_tasks || 0,
-        failed_tasks: (stats as any)?.failed_tasks || 0,
-        last_error: (lastError as any)?.error_message
-      };
-    } catch (error) {
-      await this.log('error', `Failed to get status: ${error}`);
-      throw error;
-    }
+    // Simplified status - no longer tracking tasks in database
+    return {
+      is_running: false,
+      last_run: undefined,
+      next_run: undefined,
+      total_tasks: 0,
+      completed_tasks: 0,
+      failed_tasks: 0,
+      last_error: undefined
+    };
   }
 
   async getLogs(limit: number = 50): Promise<any[]> {
-    try {
-      const result = await this.db.db.prepare(`
-        SELECT * FROM crawl_logs 
-        WHERE task_id IN (
-          SELECT id FROM crawl_tasks WHERE type = 'xkcd'
-        )
-        ORDER BY timestamp DESC 
-        LIMIT ?
-      `).bind(limit).all();
-
-      return result.results || [];
-    } catch (error) {
-      await this.log('error', `Failed to get logs: ${error}`);
-      throw error;
-    }
+    // Simplified - no longer storing logs in database
+    return [];
   }
 }

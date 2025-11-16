@@ -9,11 +9,15 @@ minify = true
 [vars]
 API_HOSTNAME = "api2.jienan.xyz"
 LOCALIZED_HOSTNAME = "xkcd.jienan.xyz"
-FCM_ENABLED = "false"
+# FCM_ENABLED - Set to "true" or "1" to enable FCM notifications
+FCM_ENABLED = "true"
+# FCM_TEST_MODE - Set to "true" or "1" to enable test mode (send to test token instead of topic)
+FCM_TEST_MODE = "true“
 
 # FCM Lambda Configuration (set via wrangler secret)
 # LAMBDA_FCM_URL - Lambda Function URL for FCM push notifications
 # LAMBDA_API_KEY - API key for Lambda authentication
+# FCM_TEST_TOKEN - Test device token (set via wrangler secret)
 
 # Static Assets
 [assets]

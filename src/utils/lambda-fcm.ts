@@ -135,23 +135,42 @@ export async function sendNewComicNotification(
     img?: string;
     alt?: string;
     [key: string]: any;
+  },
+  options?: {
+    testMode?: boolean;
+    testToken?: string | null;
   }
 ): Promise<LambdaPushResponse> {
-  return sendToTopicViaLambda(lambdaUrl, apiKey, 'new_comics', {
-    data: {
-      xkcd: JSON.stringify(comic),
-    },
-    android: {
-      collapse_key: 'new_comics',
-      priority: 'high',
-      ttl: 60 * 60 * 24 * 2 * 1000, // 2 days in milliseconds
-      fcm_options: {
-        analytics_label: `${comic.num}-Android`,
-      },
-    },
+  const data = {
+    xkcd: JSON.stringify(comic),
+  };
+  const androidConfig = {
+    collapse_key: 'new_comics',
+    priority: 'high' as const,
+    ttl: 60 * 60 * 24 * 2 * 1000, // 2 days in milliseconds
     fcm_options: {
-      analytics_label: `${comic.num}`,
+      analytics_label: options?.testMode ? `${comic.num}-Android-Test` : `${comic.num}-Android`,
     },
+  };
+  const fcmOptions = {
+    analytics_label: options?.testMode ? `${comic.num}-Test` : `${comic.num}`,
+  };
+
+  // If test mode is enabled and test token is provided, send to test token instead of topic
+  if (options?.testMode && options?.testToken) {
+    return sendNotificationViaLambda(lambdaUrl, apiKey, {
+      tokens: [options.testToken],
+      data,
+      android: androidConfig,
+      fcm_options: fcmOptions,
+    });
+  }
+
+  // Normal mode: send to topic
+  return sendToTopicViaLambda(lambdaUrl, apiKey, 'new_comics', {
+    data,
+    android: androidConfig,
+    fcm_options: fcmOptions,
   });
 }
 
@@ -167,23 +186,42 @@ export async function sendNewWhatIfNotification(
     url?: string;
     date?: string;
     [key: string]: any;
+  },
+  options?: {
+    testMode?: boolean;
+    testToken?: string | null;
   }
 ): Promise<LambdaPushResponse> {
-  return sendToTopicViaLambda(lambdaUrl, apiKey, 'new_what_if', {
-    data: {
-      whatif: JSON.stringify(article),
-    },
-    android: {
-      collapse_key: 'new_comics',
-      priority: 'high',
-      ttl: 60 * 60 * 24 * 7 * 4 * 1000, // 4 weeks in milliseconds
-      fcm_options: {
-        analytics_label: `${article.num}-Android`,
-      },
-    },
+  const data = {
+    whatif: JSON.stringify(article),
+  };
+  const androidConfig = {
+    collapse_key: 'new_comics',
+    priority: 'high' as const,
+    ttl: 60 * 60 * 24 * 7 * 4 * 1000, // 4 weeks in milliseconds
     fcm_options: {
-      analytics_label: `${article.num}`,
+      analytics_label: options?.testMode ? `${article.num}-Android-Test` : `${article.num}-Android`,
     },
+  };
+  const fcmOptions = {
+    analytics_label: options?.testMode ? `${article.num}-Test` : `${article.num}`,
+  };
+
+  // If test mode is enabled and test token is provided, send to test token instead of topic
+  if (options?.testMode && options?.testToken) {
+    return sendNotificationViaLambda(lambdaUrl, apiKey, {
+      tokens: [options.testToken],
+      data,
+      android: androidConfig,
+      fcm_options: fcmOptions,
+    });
+  }
+
+  // Normal mode: send to topic
+  return sendToTopicViaLambda(lambdaUrl, apiKey, 'new_what_if', {
+    data,
+    android: androidConfig,
+    fcm_options: fcmOptions,
   });
 }
 

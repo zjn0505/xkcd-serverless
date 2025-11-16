@@ -273,9 +273,10 @@ export const handler = async (event: any): Promise<LambdaResponse> => {
     let result;
 
     if (topic) {
-      // Send to topic
+      // Send to topic using TopicMessage with send() method
       console.log(`Sending notification to topic: ${topic}`);
-      const topicMessage: any = {
+      const topicMessage: admin.messaging.TopicMessage = {
+        topic,
         data: messageData,
         android: androidConfig,
         apns: apnsConfig,
@@ -291,15 +292,13 @@ export const handler = async (event: any): Promise<LambdaResponse> => {
         topicMessage.fcmOptions = fcmOptions;
       }
       
-      // sendToTopic accepts Message type, but TypeScript types are incompatible
-      // Using 'as any' to work around firebase-admin type definition issues
-      const messageId = await admin.messaging().sendToTopic(topic, topicMessage as any);
+      const messageId = await admin.messaging().send(topicMessage);
       result = { messageId, topic };
     } else if (tokens && tokens.length > 0) {
       if (tokens.length === 1) {
         // Single device
         console.log(`Sending notification to single device`);
-        const tokenMessage: any = {
+        const tokenMessage: admin.messaging.TokenMessage = {
           token: tokens[0],
           data: messageData,
           android: androidConfig,
@@ -316,7 +315,7 @@ export const handler = async (event: any): Promise<LambdaResponse> => {
           tokenMessage.fcmOptions = fcmOptions;
         }
         
-        const messageId = await admin.messaging().send(tokenMessage as admin.messaging.TokenMessage);
+        const messageId = await admin.messaging().send(tokenMessage);
         result = { messageId, tokens: [tokens[0]] };
       } else {
         // Batch send (max 500 per batch)

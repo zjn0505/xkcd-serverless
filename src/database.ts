@@ -419,43 +419,4 @@ export class Database {
     
     return whatIfs;
   }
-
-  // Crawler task related operations
-  async getCrawlTask(taskType: 'xkcd' | 'what_if' | 'localized'): Promise<CrawlTask | null> {
-    const result = await this.db
-      .prepare('SELECT * FROM crawl_tasks WHERE task_type = ? ORDER BY created_at DESC LIMIT 1')
-      .bind(taskType)
-      .first();
-    return result as CrawlTask | null;
-  }
-
-  async updateCrawlTask(taskId: number, updates: Partial<CrawlTask>): Promise<void> {
-    const fields = Object.keys(updates).map(key => `${key} = ?`).join(', ');
-    const values = Object.values(updates);
-    
-    await this.db
-      .prepare(`UPDATE crawl_tasks SET ${fields} WHERE id = ?`)
-      .bind(...values, taskId)
-      .run();
-  }
-
-  async createCrawlTask(task: Omit<CrawlTask, 'id' | 'created_at'>): Promise<number> {
-    const result = await this.db
-      .prepare(`
-        INSERT INTO crawl_tasks 
-        (task_type, status, last_comic_id, total_processed, error_message, started_at, completed_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `)
-      .bind(
-        task.task_type,
-        task.status,
-        task.last_comic_id,
-        task.total_processed,
-        task.error_message,
-        task.started_at,
-        task.completed_at
-      )
-      .run();
-    return result.meta.last_row_id;
-  }
 }

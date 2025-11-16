@@ -1,7 +1,7 @@
 import { Router, RouterType } from 'itty-router';
 import { createJsonResponse, createErrorResponse } from '../http/response';
 import { DataSync } from '../sync';
-import { sendNotificationViaLambda, sendNewComicNotification, sendNewWhatIfNotification } from '../utils/lambda-fcm';
+import { sendNotificationViaLambda } from '../utils/lambda-fcm';
 
 export function registerAdminRoutes(router: RouterType) {
   router.post('/sync/xkcd', async (request, env, ctx, { db }) => {

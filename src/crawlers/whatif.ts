@@ -25,7 +25,7 @@ export class WhatIfCrawler extends BaseCrawler {
         date
       };
     } catch (error) {
-      await this.log('error', `Failed to extract content for article ${articleId}: ${error}`);
+      console.error(`Failed to extract content for article ${articleId}: ${error}`);
       return null;
     }
   }
@@ -39,21 +39,18 @@ export class WhatIfCrawler extends BaseCrawler {
     const errorDetails: string[] = [];
 
     try {
-      await this.createTask();
-      await this.updateTaskStatus('running', 0);
-      await this.log('info', 'Starting What If article crawl');
+      console.log('Starting What If article crawl');
 
       // Get latest What If ID from the website
       const latestWhatIfId = await this.getLatestWhatIfId();
-      await this.log('info', `Latest What If ID: ${latestWhatIfId}`);
+      console.log(`Latest What If ID: ${latestWhatIfId}`);
 
       // Get current latest What If ID from database
       const currentLatest = await this.getCurrentLatestWhatIfId();
-      await this.log('info', `Current latest What If ID in database: ${currentLatest}`);
+      console.log(`Current latest What If ID in database: ${currentLatest}`);
 
       if (latestWhatIfId <= currentLatest) {
-        await this.log('info', 'No new What If articles to crawl');
-        await this.updateTaskStatus('completed', 100);
+        console.log('No new What If articles to crawl');
         return {
           success: true,
           items_processed: 0,
@@ -67,11 +64,11 @@ export class WhatIfCrawler extends BaseCrawler {
       // Determine range to crawl
       const startId = currentLatest + 1;
       const totalToCrawl = latestWhatIfId - currentLatest;
-      await this.log('info', `Crawling What If articles ${startId} to ${latestWhatIfId} (${totalToCrawl} articles)`);
+      console.log(`Crawling What If articles ${startId} to ${latestWhatIfId} (${totalToCrawl} articles)`);
 
       // Process articles one at a time to minimize subrequests
       for (let currentId = startId; currentId <= latestWhatIfId; currentId++) {
-        await this.log('info', `Processing article: ${currentId}`);
+        console.log(`Processing article: ${currentId}`);
 
         try {
           const articleData = await this.getWhatIfData(currentId);
@@ -84,11 +81,11 @@ export class WhatIfCrawler extends BaseCrawler {
             if (existing) {
               await this.db.insertWhatIf(whatIf);
               itemsUpdated++;
-              await this.log('info', `Updated What If article ${currentId}: ${whatIf.title}`);
+              console.log(`Updated What If article ${currentId}: ${whatIf.title}`);
             } else {
               await this.db.insertWhatIf(whatIf);
               itemsAdded++;
-              await this.log('info', `Added What If article ${currentId}: ${whatIf.title}`);
+              console.log(`Added What If article ${currentId}: ${whatIf.title}`);
               
               // Send FCM notification if enabled
               const fcmConfig = this.getFcmConfig();
@@ -103,17 +100,21 @@ export class WhatIfCrawler extends BaseCrawler {
                       url: whatIf.url,
                       date: whatIf.date,
                       featureImg: `https://what-if.xkcd.com/imgs/a/${whatIf.id}/archive_crop.png`,
+                    },
+                    {
+                      testMode: fcmConfig.testMode,
+                      testToken: fcmConfig.testToken,
                     }
                   );
-                  await this.log('info', `Sent FCM notification for What If article ${currentId}`);
+                  console.log(`Sent FCM notification for What If article ${currentId}${fcmConfig.testMode ? ' (TEST MODE)' : ''}`);
                 } catch (error) {
                   // Log error but don't fail the crawl
-                  await this.log('warn', `Failed to send FCM notification for What If article ${currentId}: ${error}`);
+                  console.warn(`Failed to send FCM notification for What If article ${currentId}: ${error}`);
                 }
               }
             }
           } else {
-            await this.log('warn', `No data found for What If article ${currentId}`);
+            console.warn(`No data found for What If article ${currentId}`);
           }
           
           itemsProcessed++;
@@ -121,17 +122,12 @@ export class WhatIfCrawler extends BaseCrawler {
           errors++;
           const errorMsg = `Failed to crawl What If article ${currentId}: ${error}`;
           errorDetails.push(errorMsg);
-          await this.log('error', errorMsg);
+          console.error(errorMsg);
           await this.recordError('ARTICLE_CRAWL_ERROR', errorMsg, (error as Error).stack);
         }
-
-        // Update progress
-        const progress = Math.round(((currentId - startId + 1) / totalToCrawl) * 100);
-        await this.updateProgress(currentId - startId + 1, totalToCrawl);
       }
 
-      await this.log('info', `Crawl completed. Processed: ${itemsProcessed}, Added: ${itemsAdded}, Updated: ${itemsUpdated}, Errors: ${errors}`);
-      await this.updateTaskStatus('completed', 100);
+      console.log(`Crawl completed. Processed: ${itemsProcessed}, Added: ${itemsAdded}, Updated: ${itemsUpdated}, Errors: ${errors}`);
 
       return {
         success: errors === 0,
@@ -145,7 +141,6 @@ export class WhatIfCrawler extends BaseCrawler {
 
     } catch (error) {
       await this.recordError('CRAWL_ERROR', `Crawl failed: ${error}`, (error as Error).stack);
-      await this.updateTaskStatus('failed', undefined, (error as Error).message);
       
       return {
         success: false,
@@ -164,7 +159,7 @@ export class WhatIfCrawler extends BaseCrawler {
       const result = await this.db.db.prepare('SELECT MAX(id) as max_id FROM what_if').first();
       return (result as any)?.max_id || 0;
     } catch (error) {
-      await this.log('warn', `Failed to get current latest What If ID: ${error}`);
+      console.warn(`Failed to get current latest What If ID: ${error}`);
       return 0;
     }
   }
@@ -236,70 +231,20 @@ export class WhatIfCrawler extends BaseCrawler {
   }
 
   async getStatus(): Promise<CrawlStatus> {
-    try {
-      // Get latest task
-      const latestTask = await this.db.db.prepare(`
-        SELECT * FROM crawl_tasks 
-        WHERE type = 'whatif' 
-        ORDER BY created_at DESC 
-        LIMIT 1
-      `).first();
-
-      // Get task statistics
-      const stats = await this.db.db.prepare(`
-        SELECT 
-          COUNT(id) as total_tasks,
-          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
-          SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_tasks
-        FROM crawl_tasks 
-        WHERE type = 'whatif'
-      `).first();
-
-      // Get last error
-      const lastError = await this.db.db.prepare(`
-        SELECT error_message 
-        FROM crawl_tasks 
-        WHERE type = 'whatif' AND status = 'failed' 
-        ORDER BY created_at DESC 
-        LIMIT 1
-      `).first();
-
-      const isRunning = latestTask ? (latestTask as any).status === 'running' : false;
-      const lastRun = latestTask ? new Date((latestTask as any).created_at) : undefined;
-      
-      // Calculate next run (assuming daily schedule)
-      const nextRun = lastRun ? new Date(lastRun.getTime() + 24 * 60 * 60 * 1000) : undefined;
-
-      return {
-        is_running: isRunning,
-        last_run: lastRun,
-        next_run: nextRun,
-        total_tasks: (stats as any)?.total_tasks || 0,
-        completed_tasks: (stats as any)?.completed_tasks || 0,
-        failed_tasks: (stats as any)?.failed_tasks || 0,
-        last_error: (lastError as any)?.error_message
-      };
-    } catch (error) {
-      await this.log('error', `Failed to get status: ${error}`);
-      throw error;
-    }
+    // Simplified status - no longer tracking tasks in database
+    return {
+      is_running: false,
+      last_run: undefined,
+      next_run: undefined,
+      total_tasks: 0,
+      completed_tasks: 0,
+      failed_tasks: 0,
+      last_error: undefined
+    };
   }
 
   async getLogs(limit: number = 50): Promise<any[]> {
-    try {
-      const result = await this.db.db.prepare(`
-        SELECT * FROM crawl_logs 
-        WHERE task_id IN (
-          SELECT id FROM crawl_tasks WHERE type = 'whatif'
-        )
-        ORDER BY timestamp DESC 
-        LIMIT ?
-      `).bind(limit).all();
-
-      return result.results || [];
-    } catch (error) {
-      await this.log('error', `Failed to get logs: ${error}`);
-      throw error;
-    }
+    // Simplified - no longer storing logs in database
+    return [];
   }
 }

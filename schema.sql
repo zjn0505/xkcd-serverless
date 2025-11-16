@@ -112,32 +112,6 @@ CREATE TABLE IF NOT EXISTS like_counts (
     UNIQUE(comic_id, comic_type)
 );
 
--- Crawler task status table
-CREATE TABLE IF NOT EXISTS crawl_tasks (
-    id TEXT PRIMARY KEY,
-    type TEXT NOT NULL, -- 'xkcd', 'whatif', 'localized'
-    status TEXT NOT NULL, -- 'pending', 'running', 'completed', 'failed'
-    start_time DATETIME,
-    end_time DATETIME,
-    progress INTEGER DEFAULT 0, -- 0-100
-    total_items INTEGER,
-    processed_items INTEGER,
-    error_message TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- Crawler execution logs table
-CREATE TABLE IF NOT EXISTS crawl_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    task_id TEXT NOT NULL,
-    level TEXT NOT NULL, -- 'info', 'warn', 'error'
-    message TEXT NOT NULL,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    metadata TEXT, -- JSON string
-    FOREIGN KEY (task_id) REFERENCES crawl_tasks(id)
-);
-
 -- Crawler error records table
 CREATE TABLE IF NOT EXISTS crawl_errors (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -156,8 +130,5 @@ CREATE INDEX IF NOT EXISTS idx_comics_date ON comics(year, month, day);
 -- Indexes for localized comics tables (using primary key id)
 -- No additional indexes needed as id is already indexed as PRIMARY KEY
 CREATE INDEX IF NOT EXISTS idx_like_counts_comic ON like_counts(comic_id, comic_type);
-CREATE INDEX IF NOT EXISTS idx_crawl_tasks_type ON crawl_tasks(type);
-CREATE INDEX IF NOT EXISTS idx_crawl_logs_task_id ON crawl_logs(task_id);
-CREATE INDEX IF NOT EXISTS idx_crawl_logs_timestamp ON crawl_logs(timestamp);
 CREATE INDEX IF NOT EXISTS idx_crawl_errors_task_id ON crawl_errors(task_id);
 CREATE INDEX IF NOT EXISTS idx_crawl_errors_timestamp ON crawl_errors(timestamp);
