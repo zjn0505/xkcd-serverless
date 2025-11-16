@@ -4,10 +4,11 @@ import { Database } from '../database';
 import { BaseCrawler } from './base';
 import { CrawlResult, CrawlStatus, WhatIfArticleData } from './types';
 import { WhatIf } from '../types';
+import { sendNewWhatIfNotification } from '../utils/lambda-fcm';
 
 export class WhatIfCrawler extends BaseCrawler {
-  constructor(db: Database) {
-    super(db, 'whatif');
+  constructor(db: Database, env?: any) {
+    super(db, 'whatif', env);
   }
 
   private async extractWhatIfContent(html: string, articleId: number): Promise<WhatIfArticleData | null> {
@@ -88,6 +89,28 @@ export class WhatIfCrawler extends BaseCrawler {
               await this.db.insertWhatIf(whatIf);
               itemsAdded++;
               await this.log('info', `Added What If article ${currentId}: ${whatIf.title}`);
+              
+              // Send FCM notification if enabled
+              const fcmConfig = this.getFcmConfig();
+              if (fcmConfig) {
+                try {
+                  await sendNewWhatIfNotification(
+                    fcmConfig.url,
+                    fcmConfig.apiKey,
+                    {
+                      num: whatIf.id,
+                      title: whatIf.title,
+                      url: whatIf.url,
+                      date: whatIf.date,
+                      featureImg: `https://what-if.xkcd.com/imgs/a/${whatIf.id}/archive_crop.png`,
+                    }
+                  );
+                  await this.log('info', `Sent FCM notification for What If article ${currentId}`);
+                } catch (error) {
+                  // Log error but don't fail the crawl
+                  await this.log('warn', `Failed to send FCM notification for What If article ${currentId}: ${error}`);
+                }
+              }
             }
           } else {
             await this.log('warn', `No data found for What If article ${currentId}`);

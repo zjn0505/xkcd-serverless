@@ -4,15 +4,45 @@ import { Database } from '../database';
 import { CrawlTask, CrawlLog, CrawlError, CrawlResult, CrawlStatus } from './types';
 import { getImageDimensions } from '../utils/image-probe';
 
+export interface CrawlerEnv {
+  LAMBDA_FCM_URL?: string;
+  LAMBDA_API_KEY?: string;
+  FCM_ENABLED?: string; // 'true' or '1' to enable
+}
+
 export abstract class BaseCrawler {
   protected db: Database;
   protected taskId: string;
   protected taskType: 'xkcd' | 'whatif' | 'localized';
+  protected env?: CrawlerEnv;
 
-  constructor(db: Database, taskType: 'xkcd' | 'whatif' | 'localized') {
+  constructor(db: Database, taskType: 'xkcd' | 'whatif' | 'localized', env?: CrawlerEnv) {
     this.db = db;
     this.taskType = taskType;
     this.taskId = this.generateTaskId();
+    this.env = env;
+  }
+
+  /**
+   * Check if FCM notifications are enabled
+   */
+  protected isFcmEnabled(): boolean {
+    if (!this.env) return false;
+    const enabled = this.env.FCM_ENABLED;
+    return enabled === 'true' || enabled === '1' || enabled === 'TRUE';
+  }
+
+  /**
+   * Get Lambda FCM URL and API key
+   */
+  protected getFcmConfig(): { url: string; apiKey: string | null } | null {
+    if (!this.isFcmEnabled() || !this.env?.LAMBDA_FCM_URL) {
+      return null;
+    }
+    return {
+      url: this.env.LAMBDA_FCM_URL,
+      apiKey: this.env.LAMBDA_API_KEY || null,
+    };
   }
 
   protected generateTaskId(): string {

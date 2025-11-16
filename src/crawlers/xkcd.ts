@@ -4,10 +4,11 @@ import { Database } from '../database';
 import { BaseCrawler } from './base';
 import { CrawlResult, CrawlStatus } from './types';
 import { Comic } from '../types';
+import { sendNewComicNotification } from '../utils/lambda-fcm';
 
 export class XkcdCrawler extends BaseCrawler {
-  constructor(db: Database) {
-    super(db, 'xkcd');
+  constructor(db: Database, env?: any) {
+    super(db, 'xkcd', env);
   }
 
   async crawl(): Promise<CrawlResult> {
@@ -144,6 +145,32 @@ export class XkcdCrawler extends BaseCrawler {
           await this.db.insertComic(comic);
           added++;
           await this.log('info', `Added comic ${comicId}: ${comic.title}`);
+          
+          // Send FCM notification if enabled
+          const fcmConfig = this.getFcmConfig();
+          if (fcmConfig) {
+            try {
+              await sendNewComicNotification(
+                fcmConfig.url,
+                fcmConfig.apiKey,
+                {
+                  num: comic.id,
+                  title: comic.title,
+                  img: comic.img,
+                  alt: comic.alt,
+                  year: comic.year,
+                  month: comic.month,
+                  day: comic.day,
+                  width: comic.width,
+                  height: comic.height,
+                }
+              );
+              await this.log('info', `Sent FCM notification for comic ${comicId}`);
+            } catch (error) {
+              // Log error but don't fail the crawl
+              await this.log('warn', `Failed to send FCM notification for comic ${comicId}: ${error}`);
+            }
+          }
         }
         
         processed++;

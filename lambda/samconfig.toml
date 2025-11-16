@@ -1,0 +1,34 @@
+version = 0.1
+
+[default]
+[default.global.parameters]
+stack_name = "xkcd-fcm-push-handler"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.validate.parameters]
+lint = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+region = "us-east-1"
+image_repositories = []
+parameter_overrides = [
+  # Set these via environment variables or AWS CLI
+  # "FirebaseServiceAccount=your-service-account-json",
+  # "LambdaApiKey=your-api-key"
+]
+
+[default.sync.parameters]
+watch = true
+
+[default.local_start_api.parameters]
+warm_containers = "EAGER"
+
+[default.local_start_lambda.parameters]
+warm_containers = "EAGER"
+

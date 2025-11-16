@@ -6,7 +6,7 @@ import { WhatIfCrawler } from '../crawlers/whatif';
 export function registerCrawlerRoutes(router: RouterType) {
   router.get('/crawler/xkcd/status', async (request, env, ctx, { db }) => {
     try {
-      const crawler = new XkcdCrawler(db);
+      const crawler = new XkcdCrawler(db, env);
       const status = await crawler.getStatus();
       return createJsonResponse(status);
     } catch (error) {
@@ -17,7 +17,7 @@ export function registerCrawlerRoutes(router: RouterType) {
 
   router.post('/crawler/xkcd/start', async (request, env, ctx, { db }) => {
     try {
-      const crawler = new XkcdCrawler(db);
+      const crawler = new XkcdCrawler(db, env);
       ctx.waitUntil(crawler.crawl());
       return createJsonResponse({ message: 'XKCD crawler started', timestamp: new Date().toISOString() });
     } catch (error) {
@@ -30,7 +30,7 @@ export function registerCrawlerRoutes(router: RouterType) {
     try {
       const url = new URL(request.url);
       const limit = parseInt(url.searchParams.get('limit') || '50');
-      const crawler = new XkcdCrawler(db);
+      const crawler = new XkcdCrawler(db, env);
       const logs = await crawler.getLogs(limit);
       return createJsonResponse({ logs, count: logs.length, limit });
     } catch (error) {
@@ -41,7 +41,7 @@ export function registerCrawlerRoutes(router: RouterType) {
 
   router.get('/crawler/whatif/status', async (request, env, ctx, { db }) => {
     try {
-      const crawler = new WhatIfCrawler(db);
+      const crawler = new WhatIfCrawler(db, env);
       const status = await crawler.getStatus();
       return createJsonResponse(status);
     } catch (error) {
@@ -52,7 +52,7 @@ export function registerCrawlerRoutes(router: RouterType) {
 
   router.post('/crawler/whatif/start', async (request, env, ctx, { db }) => {
     try {
-      const crawler = new WhatIfCrawler(db);
+      const crawler = new WhatIfCrawler(db, env);
       ctx.waitUntil(crawler.crawl());
       return createJsonResponse({ message: 'What If crawler started', timestamp: new Date().toISOString() });
     } catch (error) {
@@ -65,7 +65,7 @@ export function registerCrawlerRoutes(router: RouterType) {
     try {
       const url = new URL(request.url);
       const limit = parseInt(url.searchParams.get('limit') || '50');
-      const crawler = new WhatIfCrawler(db);
+      const crawler = new WhatIfCrawler(db, env);
       const logs = await crawler.getLogs(limit);
       return createJsonResponse({ logs, count: logs.length, limit });
     } catch (error) {

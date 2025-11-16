@@ -1,6 +1,7 @@
 import { Router, RouterType } from 'itty-router';
 import { createJsonResponse, createErrorResponse } from '../http/response';
 import { DataSync } from '../sync';
+import { sendNotificationViaLambda, sendNewComicNotification, sendNewWhatIfNotification } from '../utils/lambda-fcm';
 
 export function registerAdminRoutes(router: RouterType) {
   router.post('/sync/xkcd', async (request, env, ctx, { db }) => {
@@ -144,6 +145,165 @@ export function registerAdminRoutes(router: RouterType) {
     } catch (error) {
       console.error('Error in /overview:', error);
       return createErrorResponse('Failed to get data overview');
+    }
+  });
+
+  /**
+   * POST /admin/fcm/test
+   * Test FCM notification by sending to a specific device token
+   * Bypasses FCM_ENABLED check - always sends if Lambda URL is configured
+   * 
+   * Request body:
+   * {
+   *   type: 'xkcd' | 'whatif',
+   *   id?: number,  // Optional: comic/article ID. If not provided, uses latest
+   *   token: string // FCM device token
+   * }
+   */
+  router.post('/admin/fcm/test', async (request, env, ctx, { db }) => {
+    try {
+      // Parse request body
+      let body: any;
+      try {
+        body = await request.json();
+      } catch (error) {
+        return createErrorResponse('Invalid JSON in request body', 400);
+      }
+
+      const { type, id, token } = body;
+
+      // Validate required fields
+      if (!type || (type !== 'xkcd' && type !== 'whatif')) {
+        return createErrorResponse('Invalid type. Must be "xkcd" or "whatif"', 400);
+      }
+
+      if (!token || typeof token !== 'string') {
+        return createErrorResponse('Missing or invalid token. Must be a string', 400);
+      }
+
+      // Check Lambda configuration
+      if (!env.LAMBDA_FCM_URL) {
+        return createErrorResponse('LAMBDA_FCM_URL not configured', 500);
+      }
+
+      const lambdaUrl = env.LAMBDA_FCM_URL;
+      const apiKey = env.LAMBDA_API_KEY || null;
+
+      let data: any;
+      let notificationResult: any;
+
+      if (type === 'xkcd') {
+        // Get comic data
+        let comic;
+        if (id) {
+          comic = await db.getComic(id);
+          if (!comic) {
+            return createErrorResponse(`Comic ${id} not found`, 404);
+          }
+        } else {
+          comic = await db.getLatestComic();
+          if (!comic) {
+            return createErrorResponse('No comics found in database', 404);
+          }
+        }
+
+        // Prepare comic data for notification
+        const comicData = {
+          num: comic.id,
+          title: comic.title,
+          img: comic.img,
+          alt: comic.alt,
+          year: comic.year,
+          month: comic.month,
+          day: comic.day,
+          width: comic.width,
+          height: comic.height,
+        };
+
+        // Send notification to device token (bypassing FCM_ENABLED)
+        notificationResult = await sendNotificationViaLambda(lambdaUrl, apiKey, {
+          tokens: [token],
+          data: {
+            xkcd: JSON.stringify(comicData),
+          },
+          android: {
+            collapse_key: 'new_comics',
+            priority: 'high',
+            ttl: 60 * 60 * 24 * 2 * 1000, // 2 days
+            fcm_options: {
+              analytics_label: `${comic.id}-Android`,
+            },
+          },
+          fcm_options: {
+            analytics_label: `${comic.id}`,
+          },
+        });
+
+        data = {
+          type: 'xkcd',
+          comic: comicData,
+          sent: true,
+        };
+      } else if (type === 'whatif') {
+        // Get What If article data
+        let article;
+        if (id) {
+          article = await db.getWhatIf(id);
+          if (!article) {
+            return createErrorResponse(`What If article ${id} not found`, 404);
+          }
+        } else {
+          article = await db.getLatestWhatIf();
+          if (!article) {
+            return createErrorResponse('No What If articles found in database', 404);
+          }
+        }
+
+        // Prepare article data for notification
+        const articleData = {
+          num: article.id,
+          title: article.title,
+          url: article.url,
+          date: article.date,
+          featureImg: `https://what-if.xkcd.com/imgs/a/${article.id}/archive_crop.png`,
+        };
+
+        // Send notification to device token (bypassing FCM_ENABLED)
+        notificationResult = await sendNotificationViaLambda(lambdaUrl, apiKey, {
+          tokens: [token],
+          data: {
+            whatif: JSON.stringify(articleData),
+          },
+          android: {
+            collapse_key: 'new_comics',
+            priority: 'high',
+            ttl: 60 * 60 * 24 * 7 * 4 * 1000, // 4 weeks
+            fcm_options: {
+              analytics_label: `${article.id}-Android`,
+            },
+          },
+          fcm_options: {
+            analytics_label: `${article.id}`,
+          },
+        });
+
+        data = {
+          type: 'whatif',
+          article: articleData,
+          sent: true,
+        };
+      }
+
+      return createJsonResponse({
+        success: true,
+        data,
+        notification: notificationResult,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Error in /admin/fcm/test:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return createErrorResponse(`Failed to send test FCM notification: ${errorMessage}`, 500);
     }
   });
 }

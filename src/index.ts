@@ -127,7 +127,7 @@ export default {
       // Minute dispatcher: xkcd every minute; zh-CN every 15 minutes
       if (event.cron === '*/1 * * * *') {
         // xkcd main site every minute
-        const xkcdCrawler = new XkcdCrawler(db);
+        const xkcdCrawler = new XkcdCrawler(db, env);
         ctx.waitUntil(xkcdCrawler.crawl());
 
         // zh-CN every 15 minutes
@@ -141,7 +141,7 @@ export default {
       // Daily dispatcher: What If + localized dailies (fr, zh-tw)
       if (event.cron === '15 0 * * *') {
         // What If daily
-        const whatIfCrawler = new WhatIfCrawler(db);
+        const whatIfCrawler = new WhatIfCrawler(db, env);
         ctx.waitUntil(whatIfCrawler.crawl());
 
         // fr daily

@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: FCM Push Notification Handler for XKCD
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 256
+    Runtime: nodejs20.x
+    Environment:
+      Variables:
+        NODE_ENV: production
+
+Parameters:
+  FirebaseServiceAccount:
+    Type: String
+    Description: Firebase service account JSON (set via environment variable)
+    NoEcho: true
+    Default: ''
+  LambdaApiKey:
+    Type: String
+    Description: API key for Lambda Function URL authentication
+    NoEcho: true
+    Default: ''
+
+Resources:
+  # Lambda function for FCM push notifications
+  FcmPushHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-fcm-push-handler'
+      CodeUri: .aws-sam-build/
+      Handler: fcm-push-handler.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      MemorySize: 256
+      Environment:
+        Variables:
+          FIREBASE_SERVICE_ACCOUNT: !Ref FirebaseServiceAccount
+          LAMBDA_API_KEY: !Ref LambdaApiKey
+
+  # Lambda Function URL - free alternative to API Gateway
+  # Note: CORS not needed for server-to-server calls from Cloudflare Workers
+  # AuthType: NONE - authentication handled in Lambda function code
+  FcmPushHandlerUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      TargetFunctionArn: !GetAtt FcmPushHandler.Arn
+      AuthType: NONE
+      Cors:
+        AllowOrigins:
+          - '*'
+        AllowMethods:
+          - POST
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+          - X-API-Key
+
+  # Resource policy to allow Function URL invocation
+  # Required even when AuthType is NONE - allows public access to Function URL
+  FcmPushHandlerUrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref FcmPushHandler
+      Principal: '*'
+      Action: 'lambda:InvokeFunctionUrl'
+      FunctionUrlAuthType: NONE
+
+Outputs:
+  FcmPushHandlerFunctionName:
+    Description: FCM Push Handler Lambda Function Name
+    Value: !Ref FcmPushHandler
+    Export:
+      Name: !Sub '${AWS::StackName}-FunctionName'
+
+  FcmPushHandlerFunctionArn:
+    Description: FCM Push Handler Lambda Function ARN
+    Value: !GetAtt FcmPushHandler.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-FunctionArn'
+
+  FcmPushHandlerFunctionUrl:
+    Description: Lambda Function URL for FCM Push Handler
+    Value: !GetAtt FcmPushHandlerUrl.FunctionUrl
+    Export:
+      Name: !Sub '${AWS::StackName}-FunctionUrl'
+

@@ -1,0 +1,38 @@
+# SAM
+.aws-sam/
+.aws-sam-build/
+samconfig.toml.local
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.js
+*.js.map
+!fcm-push-handler.js
+
+# Package
+*.zip
+function.zip
+
+# Environment
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+firebase-admin.json
+

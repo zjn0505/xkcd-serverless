@@ -9,6 +9,11 @@ minify = true
 [vars]
 API_HOSTNAME = "api2.jienan.xyz"
 LOCALIZED_HOSTNAME = "xkcd.jienan.xyz"
+FCM_ENABLED = "false"
+
+# FCM Lambda Configuration (set via wrangler secret)
+# LAMBDA_FCM_URL - Lambda Function URL for FCM push notifications
+# LAMBDA_API_KEY - API key for Lambda authentication
 
 # Static Assets
 [assets]

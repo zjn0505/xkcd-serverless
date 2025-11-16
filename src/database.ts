@@ -354,6 +354,13 @@ export class Database {
     return result as WhatIf | null;
   }
 
+  async getLatestWhatIf(): Promise<WhatIf | null> {
+    const result = await this.db
+      .prepare(`SELECT ${this.WHATIF_SELECT_FIELDS} FROM what_if ORDER BY id DESC LIMIT 1`)
+      .first();
+    return result as WhatIf | null;
+  }
+
   async getRandomWhatIf(): Promise<WhatIf | null> {
     const result = await this.db
       .prepare(`SELECT ${this.WHATIF_SELECT_FIELDS} FROM what_if ORDER BY RANDOM() LIMIT 1`)

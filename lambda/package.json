@@ -1,0 +1,28 @@
+{
+  "name": "fcm-push-handler",
+  "version": "1.0.0",
+  "description": "AWS Lambda function for FCM push notifications",
+  "main": "fcm-push-handler.js",
+  "scripts": {
+    "build": "tsc",
+    "prepare-build": "./scripts/prepare-build.sh",
+    "sam:build": "npm run build && npm run prepare-build && sam build",
+    "sam:validate": "sam validate",
+    "sam:deploy": "sam deploy --guided",
+    "sam:deploy:prod": "FIREBASE_B64=$(cat firebase-admin.json | base64 | tr -d '\\n') && API_KEY=${LAMBDA_API_KEY:-$(openssl rand -hex 32)} && echo \"Generated API Key: $API_KEY\" && sam deploy --parameter-overrides \"FirebaseServiceAccount=$FIREBASE_B64\" \"LambdaApiKey=$API_KEY\"",
+    "sam:deploy:with-key": "FIREBASE_B64=$(cat firebase-admin.json | base64 | tr -d '\\n') && sam deploy --parameter-overrides \"FirebaseServiceAccount=$FIREBASE_B64\" \"LambdaApiKey=$LAMBDA_API_KEY\"",
+    "sam:local": "sam local start-api",
+    "sam:invoke": "sam local invoke FcmPushHandler --event event.json",
+    "sam:logs": "sam logs -n FcmPushHandler --stack-name xkcd-fcm-push-handler --tail",
+    "package": "npm run build && zip -r function.zip . -x '*.git*' 'node_modules/.cache/*' '*.ts' '*.map'"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
+
