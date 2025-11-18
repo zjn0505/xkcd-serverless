@@ -12,7 +12,7 @@ LOCALIZED_HOSTNAME = "xkcd.jienan.xyz"
 # FCM_ENABLED - Set to "true" or "1" to enable FCM notifications
 FCM_ENABLED = "true"
 # FCM_TEST_MODE - Set to "true" or "1" to enable test mode (send to test token instead of topic)
-FCM_TEST_MODE = "true“
+FCM_TEST_MODE = "true"
 
 # FCM Lambda Configuration (set via wrangler secret)
 # LAMBDA_FCM_URL - Lambda Function URL for FCM push notifications

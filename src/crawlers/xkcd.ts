@@ -2,7 +2,7 @@
 
 import { Database } from '../database';
 import { BaseCrawler } from './base';
-import { CrawlResult, CrawlStatus } from './types';
+import { CrawlResult, CrawlStatus, XkcdComicData } from './types';
 import { Comic } from '../types';
 import { sendNewComicNotification } from '../utils/lambda-fcm';
 
@@ -20,18 +20,16 @@ export class XkcdCrawler extends BaseCrawler {
     const errorDetails: string[] = [];
 
     try {
-      console.log('Starting XKCD comic crawl');
+      console.log();
 
       // Get latest comic ID from XKCD
       const latestComicId = await this.getLatestComicId();
-      console.log(`Latest comic ID: ${latestComicId}`);
 
       // Get current latest comic ID from database
       const currentLatest = await this.getCurrentLatestComicId();
-      console.log(`Current latest comic ID in database: ${currentLatest}`);
 
       if (latestComicId <= currentLatest) {
-        console.log('No new comics to crawl');
+        console.log(`Starting XKCD comic crawl, Latest comic ID: ${latestComicId}, Current latest comic ID in database: ${currentLatest}, No new comics to crawl`);
         return {
           success: true,
           items_processed: 0,
@@ -181,7 +179,7 @@ export class XkcdCrawler extends BaseCrawler {
     return { processed, added, updated, errors, errorDetails };
   }
 
-  private transformComicData(data: any): Omit<Comic, 'created_at' | 'updated_at'> {
+  private transformComicData(data: XkcdComicData): Omit<Comic, 'created_at' | 'updated_at'> {
     return {
       id: data.num,
       title: data.title || '',
@@ -193,7 +191,9 @@ export class XkcdCrawler extends BaseCrawler {
       day: data.day || 0,
       link: data.link || '',
       news: data.news || '',
-      safe_title: data.safe_title || ''
+      safe_title: data.safe_title || '',
+      width: data.width || 0,
+      height: data.height || 0
     };
   }
 

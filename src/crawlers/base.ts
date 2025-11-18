@@ -1,7 +1,7 @@
 // Base crawler class with common functionality
 
 import { Database } from '../database';
-import { CrawlResult, CrawlStatus } from './types';
+import { CrawlResult, CrawlStatus, XkcdComicData } from './types';
 import { getImageDimensions } from '../utils/image-probe';
 
 export interface CrawlerEnv {
@@ -131,10 +131,10 @@ export abstract class BaseCrawler {
    * Get comic data including image dimensions
    * Image dimensions are retrieved by only downloading image headers (efficient)
    */
-  protected async getComicData(comicId: number): Promise<any> {
+  protected async getComicData(comicId: number): Promise<XkcdComicData> {
     try {
       const response = await this.fetchWithRetry(`https://xkcd.com/${comicId}/info.0.json`);
-      const comicData: any = await this.parseJsonWithRetry(response);
+      const comicData = await this.parseJsonWithRetry<XkcdComicData>(response);
       
       // Get image dimensions if image URL exists
       if (comicData.img) {
@@ -142,7 +142,6 @@ export abstract class BaseCrawler {
         if (dimensions) {
           comicData.width = dimensions.width;
           comicData.height = dimensions.height;
-          console.log(`Got dimensions for comic ${comicId}: ${dimensions.width}x${dimensions.height}`);
         } else {
           console.warn(`Failed to get dimensions for comic ${comicId}, continuing without dimensions`);
         }

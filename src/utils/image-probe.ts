@@ -28,7 +28,7 @@ export async function getImageDimensions(
     // - Multiple image formats (PNG, JPEG, GIF, WebP, etc.)
     // - Proper error handling
     const result = await probe(imageUrl, { timeout: timeoutMs });
-    
+    console.log(`Got dimensions for ${imageUrl}: ${result.width}x${result.height}`);
     return {
       width: result.width,
       height: result.height

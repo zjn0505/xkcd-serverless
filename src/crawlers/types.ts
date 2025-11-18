@@ -60,7 +60,7 @@ export interface CrawlConfig {
 }
 
 export interface XkcdComicData {
-  id: number;
+  num: number; // XKCD API uses 'num' instead of 'id'
   title: string;
   alt: string;
   img: string;
@@ -71,6 +71,8 @@ export interface XkcdComicData {
   link?: string;
   news?: string;
   safe_title: string;
+  width?: number; // Added by getComicData after fetching image dimensions
+  height?: number; // Added by getComicData after fetching image dimensions
 }
 
 export interface WhatIfArticleData {
