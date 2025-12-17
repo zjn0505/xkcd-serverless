@@ -7,7 +7,7 @@ minify = true
 
 # Environment Variables
 [vars]
-API_HOSTNAME = "api2.jienan.xyz"
+API_HOSTNAME = "api.jienan.xyz"
 LOCALIZED_HOSTNAME = "xkcd.jienan.xyz"
 # FCM_ENABLED - Set to "true" or "1" to enable FCM notifications
 FCM_ENABLED = "true"
@@ -67,7 +67,7 @@ class_name = "EsCrawlerWorkflow"
 
 # Routes
 [[routes]]
-pattern = "api2.jienan.xyz/xkcd/*"
+pattern = "api.jienan.xyz/xkcd/*"
 zone_name = "jienan.xyz"
 
 # Custom domains
