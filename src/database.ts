@@ -256,7 +256,7 @@ export class Database {
   async searchComics(keyword: string, limit: number = 20): Promise<Comic[]> {
     // Limit keyword length to prevent SQLite "LIKE pattern too complex" error
     // SQLite has internal limits on LIKE pattern complexity, typically around 50-100 characters
-    const MAX_KEYWORD_LENGTH = 50;
+    const MAX_KEYWORD_LENGTH = 49;
     if (keyword.trim().length >= MAX_KEYWORD_LENGTH) {
       keyword = keyword.trim().substring(0, MAX_KEYWORD_LENGTH - 1);
     }
@@ -378,7 +378,7 @@ export class Database {
   async searchWhatIf(keyword: string, limit: number = 20): Promise<WhatIf[]> {
     // Limit keyword length to prevent SQLite "LIKE pattern too complex" error
     // SQLite has internal limits on LIKE pattern complexity, typically around 50-100 characters
-    const MAX_KEYWORD_LENGTH = 50;
+    const MAX_KEYWORD_LENGTH = 49;
     if (keyword.trim().length >= MAX_KEYWORD_LENGTH) {
       keyword = keyword.trim().substring(0, MAX_KEYWORD_LENGTH - 1);
     }
