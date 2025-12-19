@@ -1,58 +1,8 @@
 import { Router, RouterType } from 'itty-router';
 import { createJsonResponse, createErrorResponse } from '../http/response';
-import { DataSync } from '../sync';
 import { sendNotificationViaLambda } from '../utils/lambda-fcm';
 
 export function registerAdminRoutes(router: RouterType) {
-  router.post('/sync/xkcd', async (request, env, ctx, { db }) => {
-    try {
-      const url = new URL(request.url);
-      const start = parseInt(url.searchParams.get('start') || '1');
-      const size = parseInt(url.searchParams.get('size') || '100');
-      const sync = new DataSync(db);
-      const result = await sync.syncXkcdComics(start, size);
-      return createJsonResponse({ message: 'XKCD sync completed', synced: result.synced, errors: result.errors });
-    } catch (error) {
-      console.error('Error in /sync/xkcd:', error);
-      return createErrorResponse('Failed to sync XKCD comics');
-    }
-  });
-
-  router.post('/sync/whatif', async (request, env, ctx, { db }) => {
-    try {
-      const url = new URL(request.url);
-      const start = parseInt(url.searchParams.get('start') || '1');
-      const size = parseInt(url.searchParams.get('size') || '100');
-      const sync = new DataSync(db);
-      const result = await sync.syncWhatIfArticles(start, size);
-      return createJsonResponse({ message: 'What If sync completed', synced: result.synced, errors: result.errors });
-    } catch (error) {
-      console.error('Error in /sync/whatif:', error);
-      return createErrorResponse('Failed to sync What If articles');
-    }
-  });
-
-  router.post('/sync/all', async (request, env, ctx, { db }) => {
-    try {
-      const sync = new DataSync(db);
-      const result = await sync.syncAll();
-      return createJsonResponse({ message: 'Full sync completed', comics: result.comics, whatIf: result.whatIf });
-    } catch (error) {
-      console.error('Error in /sync/all:', error);
-      return createErrorResponse('Failed to sync all data');
-    }
-  });
-
-  router.get('/sync/status', async (request, env, ctx, { db }) => {
-    try {
-      const sync = new DataSync(db);
-      const status = await sync.getSyncStatus();
-      return createJsonResponse(status);
-    } catch (error) {
-      console.error('Error in /sync/status:', error);
-      return createErrorResponse('Failed to get sync status');
-    }
-  });
 
   // GET /overview
   router.get('/overview.json', async (request, env, ctx, { db }) => {
