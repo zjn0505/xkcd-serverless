@@ -7,7 +7,7 @@ import { ZhCnCrawlerStrategy } from '../strategies/zh_cn_strategy';
  * Architecture:
  * - Each Workflow instance processes a small batch (10-15 comics)
  * - State is persisted in KV across multiple Workflow runs
- * - Cron triggers a new Workflow every 15 minutes
+ * - Cron triggers a new Workflow once per hour
  * 
  * Steps:
  * 1. check-state: Check KV for data_counts and pending comics

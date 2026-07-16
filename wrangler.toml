@@ -78,7 +78,7 @@ custom_domain = true
 # Cron Triggers for crawlers
 [triggers]
 crons = [
-  "*/1 * * * *",    # Minute dispatcher: xkcd every minute; zh-CN every 15m
+  "*/1 * * * *",    # Minute dispatcher: xkcd every minute; zh-CN hourly (minute === 0)
   "15 0 * * *"      # Daily dispatcher: What If + localized dailies
 ]
 

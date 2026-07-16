@@ -10,6 +10,7 @@ import { registerLocalizedRoutes } from './routes/localized';
 import { registerAdminRoutes } from './routes/admin';
 import { registerCrawlerRoutes } from './routes/crawler';
 import { registerViewerRoutes } from './routes/viewer';
+import { CRAWLER_WORKFLOW_RETENTION } from './workflows/retention';
 
 // Export Workflows
 export { ZhCnCrawlerWorkflow } from './workflows/zh_cn_crawler';
@@ -124,16 +125,18 @@ export default {
       // Initialize database
       const db = new Database(env.DB);
       
-      // Minute dispatcher: xkcd every minute; zh-CN every 15 minutes
+      // Minute dispatcher: xkcd every minute; zh-CN hourly (same cron, gated in code)
       if (event.cron === '*/1 * * * *') {
         // xkcd main site every minute
         const xkcdCrawler = new XkcdCrawler(db, env);
         ctx.waitUntil(xkcdCrawler.crawl());
 
-        // zh-CN every 15 minutes
+        // zh-CN once per hour (Free plan allows only 2 crons; reuse the minute cron)
         const minute = new Date().getUTCMinutes();
-        if (minute % 15 === 0 && env.ZH_CN_CRAWLER) {
-          const instance = await env.ZH_CN_CRAWLER.create();
+        if (minute === 0 && env.ZH_CN_CRAWLER) {
+          const instance = await env.ZH_CN_CRAWLER.create({
+            retention: CRAWLER_WORKFLOW_RETENTION,
+          });
           console.log('zh-CN Workflow started:', instance.id);
         }
       }
@@ -146,31 +149,41 @@ export default {
 
         // fr daily
         if (env.FR_CRAWLER) {
-          const frInstance = await env.FR_CRAWLER.create();
+          const frInstance = await env.FR_CRAWLER.create({
+            retention: CRAWLER_WORKFLOW_RETENTION,
+          });
           console.log('fr Workflow started:', frInstance.id);
         }
 
         // zh-TW daily
         if (env.ZH_TW_CRAWLER) {
-          const twInstance = await env.ZH_TW_CRAWLER.create();
+          const twInstance = await env.ZH_TW_CRAWLER.create({
+            retention: CRAWLER_WORKFLOW_RETENTION,
+          });
           console.log('zh-TW Workflow started:', twInstance.id);
         }
 
         // ru daily
         if (env.RU_CRAWLER) {
-          const ruInstance = await env.RU_CRAWLER.create();
+          const ruInstance = await env.RU_CRAWLER.create({
+            retention: CRAWLER_WORKFLOW_RETENTION,
+          });
           console.log('ru Workflow started:', ruInstance.id);
         }
 
         // de daily
         if (env.DE_CRAWLER) {
-          const deInstance = await env.DE_CRAWLER.create();
+          const deInstance = await env.DE_CRAWLER.create({
+            retention: CRAWLER_WORKFLOW_RETENTION,
+          });
           console.log('de Workflow started:', deInstance.id);
         }
 
         // es daily
         if (env.ES_CRAWLER) {
-          const esInstance = await env.ES_CRAWLER.create();
+          const esInstance = await env.ES_CRAWLER.create({
+            retention: CRAWLER_WORKFLOW_RETENTION,
+          });
           console.log('es Workflow started:', esInstance.id);
         }
       }

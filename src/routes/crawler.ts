@@ -2,6 +2,7 @@ import { Router, RouterType } from 'itty-router';
 import { createJsonResponse, createErrorResponse } from '../http/response';
 import { XkcdCrawler } from '../crawlers/xkcd';
 import { WhatIfCrawler } from '../crawlers/whatif';
+import { CRAWLER_WORKFLOW_RETENTION } from '../workflows/retention';
 
 export function registerCrawlerRoutes(router: RouterType) {
   router.get('/crawler/xkcd/status', async (request, env, ctx, { db }) => {
@@ -107,7 +108,9 @@ export function registerCrawlerRoutes(router: RouterType) {
       const workflowBinding = env[crawlerConfig.binding as keyof typeof env];
       
       if (workflowBinding) {
-        const instance = await workflowBinding.create();
+        const instance = await workflowBinding.create({
+          retention: CRAWLER_WORKFLOW_RETENTION,
+        });
         return createJsonResponse({
           message: `Localized ${crawlerConfig.name} crawler workflow started`,
           workflowId: instance.id,
